@@ -9,6 +9,7 @@ export default NextAuth({
     }),
   ],
   secret: process.env.SECRET,
+  /*
   ...(process.env.NODE_ENV !== "development" && {
     cookies: {
       sessionToken: {
@@ -23,4 +24,5 @@ export default NextAuth({
       },
     },
   }),
+  */
 })
