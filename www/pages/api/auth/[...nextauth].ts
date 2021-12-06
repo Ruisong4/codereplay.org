@@ -9,4 +9,18 @@ export default NextAuth({
     }),
   ],
   secret: process.env.SECRET,
+  ...(process.env.NODE_ENV !== "development" && {
+    cookies: {
+      sessionToken: {
+        name: "__Secure-next-auth.session-token",
+        options: {
+          httpOnly: true,
+          sameSite: "lax",
+          path: "/",
+          domain: process.env.COOKIE_DOMAIN,
+          secure: true,
+        },
+      },
+    },
+  }),
 })
