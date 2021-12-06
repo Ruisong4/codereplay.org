@@ -13,7 +13,8 @@
     "eslint": "eslint src/**",
     "ncu": "ncu",
     "serve": "node --enable-source-maps /server/dist/index.js",
-    "start": "nodemon",
+    "nodemon": "nodemon",
+    "start": "docker compose --env-file .env.local up",
     "prettier": "prettier -w --plugin=prettier-plugin-organize-imports . && prettier-package-json --write"
   },
   "dependencies": {
