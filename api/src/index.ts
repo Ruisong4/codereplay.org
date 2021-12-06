@@ -19,8 +19,7 @@ router.get("/", async (ctx: Koa.Context) => {
 const decryptToken = async (ctx: Koa.Context, next: () => Promise<any>) => {
   console.log(ctx.request.header.cookie)
 
-  const secureCookie = !(!process.env.NEXTAUTH_URL || process.env.NEXTAUTH_URL.startsWith("http://"))
-  const cookieName = secureCookie ? "__Secure-next-auth.session-token" : "next-auth.session-token"
+  const cookieName = process.env.SECURE_COOKIE ? "__Secure-next-auth.session-token" : "next-auth.session-token"
   const token = ctx.cookies.get(cookieName)
   if (token) {
     const encryptionKey = await ENCRYPTION_KEY
