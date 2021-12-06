@@ -1,0 +1,14 @@
+version: "3"
+services:
+  api:
+    build: .
+    environment:
+      - "SECRET=${SECRET}"
+      - "DEVELOPMENT=true"
+    ports:
+      - 8888:8888
+    volumes:
+      - .:/server/
+      - nodemodules:/server/node_modules
+volumes:
+  nodemodules: {}

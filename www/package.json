@@ -1,0 +1,31 @@
+{
+  "private": true,
+  "name": "www.codereplay.org",
+  "version": "2021.12.0",
+  "scripts": {
+    "build": "next build",
+    "lint": "next lint",
+    "start": "next dev",
+    "prettier": "prettier -w --plugin=prettier-plugin-organize-imports . && prettier-package-json --write"
+  },
+  "dependencies": {
+    "next": "12.0.7",
+    "next-auth": "^4.0.2",
+    "react": "17.0.2",
+    "react-dom": "17.0.2"
+  },
+  "devDependencies": {
+    "@types/node": "16.11.11",
+    "@types/react": "17.0.37",
+    "eslint": "7",
+    "eslint-config-next": "12.0.7",
+    "prettier": "^2.5.1",
+    "prettier-package-json": "^2.6.0",
+    "prettier-plugin-organize-imports": "^2.3.4",
+    "typescript": "4.5.2"
+  },
+  "prettier": {
+    "semi": false,
+    "printWidth": 120
+  }
+}

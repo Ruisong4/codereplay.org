@@ -1,0 +1,8 @@
+{
+    "private": true,
+    "workspaces": [
+        "www",
+        "api"
+    ],
+    "version": "2021.12.0"
+}
