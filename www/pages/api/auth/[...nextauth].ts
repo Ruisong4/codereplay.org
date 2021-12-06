@@ -17,7 +17,7 @@ export default NextAuth({
           httpOnly: true,
           sameSite: "lax",
           path: "/",
-          domain: process.env.COOKIE_DOMAIN,
+          // domain: process.env.COOKIE_DOMAIN,
           secure: true,
         },
       },
