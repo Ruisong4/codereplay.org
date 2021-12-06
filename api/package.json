@@ -6,14 +6,14 @@
     "build": "rimraf dist && esbuild src/index.ts --sourcemap --bundle --platform=node --outfile=dist/index.js",
     "clean": "rimraf dist",
     "predocker:build": "yarn build",
-    "docker:build": "docker build --build-arg VERSION=$npm_package_version --build-arg GIT_COMMIT=$(git show --no-patch --format=%h) --build-arg BUILD_DATE=`date -u +\"%Y-%m-%dT%H:%M:%SZ\"` . -t cs124/jeed-proxy:latest",
+    "docker:build": "docker build --build-arg VERSION=$npm_package_version --build-arg GIT_COMMIT=$(git show --no-patch --format=%h) --build-arg BUILD_DATE=`date -u +\"%Y-%m-%dT%H:%M:%SZ\"` . -t cs124/codereplay-api:latest",
     "postdocker:build": "yarn docker:tag",
-    "docker:push": "docker push cs124/jeed-proxy:latest && docker push cs124/jeed-proxy:$npm_package_version",
-    "docker:tag": "docker tag cs124/jeed-proxy:latest cs124/jeed-proxy:$npm_package_version",
+    "docker:push": "docker push cs124/codereplay-api:latest && docker push cs124/codereplay-api:$npm_package_version",
+    "docker:tag": "docker tag cs124/codereplay-api:latest cs124/codereplay-api:$npm_package_version",
     "eslint": "eslint src/**",
     "ncu": "ncu",
-    "start": "nodemon",
     "serve": "node --enable-source-maps /server/dist/index.js",
+    "start": "nodemon",
     "prettier": "prettier -w --plugin=prettier-plugin-organize-imports . && prettier-package-json --write"
   },
   "dependencies": {
