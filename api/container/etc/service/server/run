@@ -1,7 +1,7 @@
 #!/bin/bash
 cd /server/
-if [[ -z "${DEVELOPMENT}" ]]; then
-    npm run serve
-else
+if [[ ! -z "${DEVELOPMENT}" ]]; then
     npm run nodemon
+else
+    npm run serve
 fi

@@ -3,8 +3,7 @@
   "name": "api.codereplay.org",
   "version": "2021.12.0",
   "scripts": {
-    "build": "rimraf dist && esbuild src/index.ts --sourcemap --bundle --platform=node --outfile=dist/index.js",
-    "clean": "rimraf dist",
+    "build": "esbuild src/index.ts --sourcemap --bundle --platform=node --outfile=dist/index.js",
     "docker:build": "docker build --build-arg VERSION=$npm_package_version --build-arg GIT_COMMIT=$(git show --no-patch --format=%h) --build-arg BUILD_DATE=`date -u +\"%Y-%m-%dT%H:%M:%SZ\"` . -t cs124/codereplay-api:latest",
     "postdocker:build": "yarn docker:tag",
     "docker:push": "docker push cs124/codereplay-api:latest && docker push cs124/codereplay-api:$npm_package_version",
@@ -18,29 +17,31 @@
   },
   "dependencies": {
     "@koa/cors": "^3.1.0",
+    "@koa/multer": "^3.0.0",
     "@koa/router": "^10.1.1",
     "@panva/hkdf": "^1.0.1",
-    "@types/koa__cors": "^3.0.3",
     "jose": "^4.3.7",
     "koa": "^2.13.4",
-    "next-auth": "^4.0.2"
+    "multer": "^1.4.4"
   },
   "devDependencies": {
     "@types/koa": "^2.13.4",
+    "@types/koa__cors": "^3.0.3",
+    "@types/koa__multer": "^2.0.4",
     "@types/koa__router": "^8.0.11",
-    "@typescript-eslint/eslint-plugin": "^5.5.0",
-    "@typescript-eslint/parser": "^5.5.0",
+    "@typescript-eslint/eslint-plugin": "^5.6.0",
+    "@typescript-eslint/parser": "^5.6.0",
     "babel-eslint": "^10.1.0",
     "env-cmd": "^10.1.0",
     "esbuild": "^0.14.2",
-    "eslint": "^8.4.0",
+    "eslint": "^8.4.1",
     "eslint-config-prettier": "^8.3.0",
     "eslint-plugin-prettier": "^4.0.0",
     "nodemon": "^2.0.15",
-    "npm-check-updates": "^12.0.2",
+    "npm-check-updates": "^12.0.3",
     "prettier": "^2.5.1",
     "prettier-package-json": "^2.6.0",
-    "typescript": "^4.5.2"
+    "typescript": "^4.5.3"
   },
   "nodemonConfig": {
     "watch": [

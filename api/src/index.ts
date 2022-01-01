@@ -1,4 +1,5 @@
 import cors from "@koa/cors"
+import multer from "@koa/multer"
 import Router from "@koa/router"
 import hkdf from "@panva/hkdf"
 import { jwtDecrypt } from "jose"
@@ -16,9 +17,28 @@ router.get("/", async (ctx: Koa.Context) => {
   ctx.body = { user: ctx.user }
 })
 
-const decryptToken = async (ctx: Koa.Context, next: () => Promise<any>) => {
-  console.log(ctx.request.header.cookie)
+const upload = multer({ dest: "/uploads/" })
+router.post(
+  "/upload",
+  upload.fields([
+    {
+      name: "trace",
+      maxCount: 1,
+    },
+    {
+      name: "audio",
+      maxCount: 1,
+    },
+  ]),
+  async (ctx: Koa.Context) => {
+    console.log("ctx.request.files", ctx.request.files)
+    console.log("ctx.files", ctx.files)
+    console.log("ctx.request.body", ctx.request.body)
+    ctx.body = {}
+  }
+)
 
+const decryptToken = async (ctx: Koa.Context, next: () => Promise<any>) => {
   const cookieName = process.env.SECURE_COOKIE ? "__Secure-next-auth.session-token" : "next-auth.session-token"
   const token = ctx.cookies.get(cookieName)
   if (token) {
@@ -28,16 +48,23 @@ const decryptToken = async (ctx: Koa.Context, next: () => Promise<any>) => {
     } = await jwtDecrypt(token, encryptionKey, { clockTolerance: 15 })
     ctx.user = { name, email }
   }
-
-  next()
+  await next()
 }
 
 const server = new Koa()
+  .use(async (ctx, next) => {
+    try {
+      await next()
+      if (ctx.status === 404) {
+        console.log(ctx.request.path)
+      }
+    } catch (err) {
+      console.log(err)
+    }
+  })
   .use(
     cors({
-      origin: (ctx) => {
-        return ctx.headers.origin!
-      },
+      origin: (ctx) => ctx.headers.origin!,
       maxAge: 86400,
       credentials: true,
     })

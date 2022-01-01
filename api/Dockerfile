@@ -4,7 +4,6 @@ RUN curl -sL https://deb.nodesource.com/setup_14.x | bash -
 RUN apt-get -y install nodejs gzip tmux unzip ffmpeg nginx
 # RUN curl https://rclone.org/install.sh | bash -
 
-# ENV NODE_ENV=production
 WORKDIR /server
 ADD package.json .
 RUN npm i --silent
@@ -16,6 +15,9 @@ RUN chmod +x /etc/service/server/run
 COPY container/etc/service/nginx/run /etc/service/nginx/run
 RUN chmod +x /etc/service/nginx/run
 COPY container/etc/nginx/nginx.conf /etc/nginx/nginx.conf
+
+COPY test.json /downloads/test.json
+
 # COPY container/etc/nginx/sites-available/default /etc/nginx/sites-available/default
 # COPY container/rclone_command /root/
 # RUN chmod +x /root/rclone_command
