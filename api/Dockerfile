@@ -1,15 +1,17 @@
 FROM phusion/baseimage:bionic-1.0.0
 
 RUN curl -sL https://deb.nodesource.com/setup_14.x | bash -
-RUN apt-get -y install nodejs gzip tmux unzip ffmpeg nginx
+RUN apt -y install nodejs gzip tmux unzip ffmpeg nginx
 # RUN curl https://rclone.org/install.sh | bash -
 
-# ENV NODE_ENV=production
-WORKDIR /server
-ADD package.json .
-RUN npm i --silent
-ADD . .
-RUN npm run build
+RUN apt -y install build-essential wget
+WORKDIR /tmp/
+RUN wget https://github.com/eradman/entr/archive/refs/tags/5.1.tar.gz && \
+    tar xf 5.1.tar.gz && \
+    cd entr* && \
+    ./configure && make && make install
+ENV ENTR_INOTIFY_WORKAROUND 1
+RUN apt -y purge build-essential wget
 
 COPY container/etc/service/server/run /etc/service/server/run
 RUN chmod +x /etc/service/server/run
@@ -25,11 +27,6 @@ COPY container/etc/nginx/nginx.conf /etc/nginx/nginx.conf
 
 RUN apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-# ARG VERSION
-# ENV VERSION=$VERSION
-# ARG GIT_COMMIT
-# ENV GIT_COMMIT=$GIT_COMMIT
-# ARG BUILD_DATE
-# ENV BUILD_DATE=$BUILD_DATE
-
 CMD ["/sbin/my_init", "--quiet"]
+
+# vim: tw=0
