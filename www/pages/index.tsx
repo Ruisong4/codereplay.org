@@ -33,7 +33,7 @@ const Home: NextPage = () => {
     formData.append("trace", new Blob([JSON.stringify({ test: "me" })], { type: "application/json" }), "trace.json")
     formData.append(
       "audio",
-      new Blob([new ArrayBuffer(1024 * 1024 * 64)], { type: "application/octet-stream" }),
+      new Blob([new ArrayBuffer(1024 * 1024 * 32)], { type: "application/octet-stream" }),
       "audio.mp4"
     )
     return new Promise((resolve, reject) => {
