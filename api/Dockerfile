@@ -4,14 +4,17 @@ RUN curl -sL https://deb.nodesource.com/setup_14.x | bash -
 RUN apt -y install nodejs gzip tmux unzip ffmpeg nginx
 # RUN curl https://rclone.org/install.sh | bash -
 
-RUN apt -y install build-essential wget
 WORKDIR /tmp/
-RUN wget https://github.com/eradman/entr/archive/refs/tags/5.1.tar.gz && \
+RUN apt -y install build-essential wget && \
+    wget https://github.com/eradman/entr/archive/refs/tags/5.1.tar.gz && \
     tar xf 5.1.tar.gz && \
     cd entr* && \
-    ./configure && make && make install
+    ./configure && make && make install && \
+    apt -y purge build-essential wget
 ENV ENTR_INOTIFY_WORKAROUND 1
-RUN apt -y purge build-essential wget
+
+WORKDIR /server/
+COPY dist dist
 
 COPY container/etc/service/server/run /etc/service/server/run
 RUN chmod +x /etc/service/server/run
