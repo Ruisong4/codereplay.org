@@ -5,11 +5,12 @@ import hkdf from "@panva/hkdf"
 import { jwtDecrypt } from "jose"
 import Koa from "koa"
 
-const ENCRYPTION_KEY = hkdf("sha256", process.env.SECRET!, "", "NextAuth.js Generated Encryption Key", 32)
+const ENCRYPTION_KEY = hkdf("sha256", process.env.SECRET, "", "NextAuth.js Generated Encryption Key", 32)
 
 type User = {
   email: string
   name: string
+  picture: string
 }
 const router = new Router<Record<string, unknown>, { user?: User }>()
 
@@ -74,5 +75,6 @@ const server = new Koa()
   .use(router.allowedMethods())
 
 Promise.resolve().then(async () => {
+  console.log(`Started codereplay...`)
   server.listen(process.env.PORT || 8888)
 })
