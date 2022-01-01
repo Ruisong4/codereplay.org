@@ -4,6 +4,7 @@ import Router from "@koa/router"
 import hkdf from "@panva/hkdf"
 import { jwtDecrypt } from "jose"
 import Koa from "koa"
+import logger from "koa-logger"
 
 const ENCRYPTION_KEY = hkdf("sha256", process.env.SECRET, "", "NextAuth.js Generated Encryption Key", 32)
 
@@ -32,9 +33,7 @@ router.post(
     },
   ]),
   async (ctx: Koa.Context) => {
-    console.log("ctx.request.files", ctx.request.files)
-    console.log("ctx.files", ctx.files)
-    console.log("ctx.request.body", ctx.request.body)
+    console.log("Done")
     ctx.body = {}
   }
 )
@@ -53,16 +52,7 @@ const decryptToken = async (ctx: Koa.Context, next: () => Promise<any>) => {
 }
 
 const server = new Koa()
-  .use(async (ctx, next) => {
-    try {
-      await next()
-      if (ctx.status === 404) {
-        console.log(ctx.request.path)
-      }
-    } catch (err) {
-      console.log(err)
-    }
-  })
+  .use(logger())
   .use(
     cors({
       origin: (ctx) => ctx.headers.origin!,

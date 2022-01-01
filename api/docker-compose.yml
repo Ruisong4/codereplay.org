@@ -8,6 +8,6 @@ services:
       - "DEVELOPMENT=true"
       - "SECRET=fNSnUcyhP3jI3A8ET3PMoHUD0ko3RbPF"
     ports:
-      - 8888:8888
+      - 8888:80
     volumes:
       - ./dist:/server/dist

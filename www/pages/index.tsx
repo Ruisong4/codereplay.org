@@ -38,6 +38,7 @@ const Home: NextPage = () => {
     )
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest()
+      xhr.withCredentials = true
       xhr.open("POST", `${process.env.NEXT_PUBLIC_API_URL}/upload`)
       xhr.onload = function () {
         if (this.status >= 200 && this.status < 300) {
@@ -49,8 +50,8 @@ const Home: NextPage = () => {
           })
         }
       }
-      xhr.upload.onprogress = () => {
-        console.log("Progress")
+      xhr.upload.onprogress = (e) => {
+        console.log(`Progress: ${e.loaded}`)
       }
       xhr.onerror = function () {
         reject({
