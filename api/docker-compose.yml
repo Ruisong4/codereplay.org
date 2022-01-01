@@ -1,14 +1,13 @@
 version: "3"
 services:
   api:
+    image: cs124/codereplay-api
+    pull_policy: build
     build: .
     environment:
-      - "SECRET=${SECRET}"
       - "DEVELOPMENT=true"
+      - "SECRET=fNSnUcyhP3jI3A8ET3PMoHUD0ko3RbPF"
     ports:
       - 8888:8888
     volumes:
-      - .:/server/
-      - nodemodules:/server/node_modules
-volumes:
-  nodemodules: {}
+      - ./dist:/server/dist

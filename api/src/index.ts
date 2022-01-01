@@ -1,6 +1,7 @@
 import cors from "@koa/cors"
 import Router from "@koa/router"
 import hkdf from "@panva/hkdf"
+import assert from "assert"
 import { jwtDecrypt } from "jose"
 import Koa from "koa"
 
@@ -9,6 +10,7 @@ const ENCRYPTION_KEY = hkdf("sha256", process.env.SECRET, "", "NextAuth.js Gener
 type User = {
   email: string
   name: string
+  picture: string
 }
 const router = new Router<Record<string, unknown>, { user?: User }>()
 
@@ -17,18 +19,26 @@ router.get("/", async (ctx: Koa.Context) => {
 })
 
 const decryptToken = async (ctx: Koa.Context, next: () => Promise<unknown>) => {
-  const secureCookie = !(!process.env.NEXTAUTH_URL || process.env.NEXTAUTH_URL.startsWith("http://"))
-  const cookieName = secureCookie ? "__Secure-next-auth.session-token" : "next-auth.session-token"
-  const token = ctx.cookies.get(cookieName)
-  if (token) {
-    ctx.user = (await jwtDecrypt(token, await ENCRYPTION_KEY, { clockTolerance: 15 })).payload
-  }
+  const cookieName = !(!process.env.NEXTAUTH_URL || process.env.NEXTAUTH_URL.startsWith("http://"))
+    ? "__Secure-next-auth.session-token"
+    : "next-auth.session-token"
+
+  try {
+    const tokenString = ctx.cookies.get(cookieName)
+    assert(tokenString)
+    const token = await jwtDecrypt(tokenString, await ENCRYPTION_KEY, { clockTolerance: 15 })
+    const { email, name, picture } = token.payload
+    ctx.user = { email, name, picture }
+  } catch (err) {}
   next()
 }
 
-new Koa()
+const server = new Koa()
   .use(cors({ credentials: true }))
   .use(decryptToken)
   .use(router.routes())
   .use(router.allowedMethods())
-  .listen(process.env.PORT || 8888)
+Promise.resolve().then(async () => {
+  console.log(`Started codereplay...`)
+  server.listen(process.env.PORT || 8888)
+})

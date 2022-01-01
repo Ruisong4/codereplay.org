@@ -1,7 +1,2 @@
-#!/bin/bash
-cd /server/
-if [[ -z "${DEVELOPMENT}" ]]; then
-    npm run serve
-else
-    npm start
-fi
+#!/bin/sh
+echo /server/dist/index.js | entr -rn node /server/dist/index.js

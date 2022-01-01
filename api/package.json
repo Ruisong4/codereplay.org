@@ -3,7 +3,7 @@
   "name": "api.codereplay.org",
   "version": "2021.12.0",
   "scripts": {
-    "build": "rimraf dist && esbuild src/index.ts --sourcemap --bundle --platform=node --outfile=dist/index.js",
+    "build": "esbuild src/index.ts --sourcemap --bundle --platform=node --outfile=dist/index.js",
     "clean": "rimraf dist",
     "predocker:build": "yarn build",
     "docker:build": "docker build --build-arg VERSION=$npm_package_version --build-arg GIT_COMMIT=$(git show --no-patch --format=%h) --build-arg BUILD_DATE=`date -u +\"%Y-%m-%dT%H:%M:%SZ\"` . -t cs124/codereplay-api:latest",
@@ -12,9 +12,17 @@
     "docker:tag": "docker tag cs124/codereplay-api:latest cs124/codereplay-api:$npm_package_version",
     "eslint": "eslint src/**",
     "ncu": "ncu",
-    "serve": "node --enable-source-maps /server/dist/index.js",
-    "start": "nodemon",
-    "prettier": "prettier -w --plugin=prettier-plugin-organize-imports . && prettier-package-json --write"
+    "run:docker": "docker compose up",
+    "serve": "node --enable-source-maps dist/index.js",
+    "start": "run-p run:docker watch",
+    "prettier": "prettier -w --plugin=prettier-plugin-organize-imports . && prettier-package-json --write",
+    "watch": "npm-watch build"
+  },
+  "watch": {
+    "build": {
+      "patterns": "src/*.ts",
+      "extensions": "ts"
+    }
   },
   "dependencies": {
     "@koa/cors": "^3.1.0",
@@ -38,6 +46,8 @@
     "eslint-plugin-prettier": "^4.0.0",
     "nodemon": "^2.0.15",
     "npm-check-updates": "^12.0.5",
+    "npm-run-all": "^4.1.5",
+    "npm-watch": "^0.11.0",
     "prettier": "^2.5.1",
     "prettier-package-json": "^2.6.0",
     "typescript": "^4.5.4"
