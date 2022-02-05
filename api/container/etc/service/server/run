@@ -1,2 +1,2 @@
 #!/bin/sh
-echo /server/dist/index.js | entr -rn node /server/dist/index.js
+echo /server/dist/index.js | entr -rnz node --enable-source-maps /_
