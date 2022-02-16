@@ -1,2 +1,2 @@
 #!/bin/sh
-echo /server/dist/index.js | entr -rnz node --enable-source-maps /_
+echo /server/bundled/index.js | entr -rnz node --enable-source-maps /_

@@ -14,7 +14,7 @@ RUN apt -y install build-essential wget && \
 ENV ENTR_INOTIFY_WORKAROUND 1
 
 WORKDIR /server/
-COPY dist dist
+COPY bundled bundled
 
 COPY container/etc/service/server/run /etc/service/server/run
 RUN chmod +x /etc/service/server/run

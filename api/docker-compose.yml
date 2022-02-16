@@ -7,7 +7,27 @@ services:
     environment:
       - "DEVELOPMENT=true"
       - "SECRET=fNSnUcyhP3jI3A8ET3PMoHUD0ko3RbPF"
+      - "PLAYGROUND_SERVER=http://playground:8888"
     ports:
       - 8888:80
     volumes:
-      - ./dist:/server/dist
+      - ./bundled:/server/bundled
+      - ./uploads:/uploads/
+      - ./downloads:/downloads/
+  playground:
+    image: "cs124/playground:latest"
+    depends_on:
+      - dind
+    environment:
+      - "PLAYGROUND_LOG_LEVEL:TRACE"
+      - "DOCKER_HOST=dind:2375"
+      - "DIRECTORY=/playground/"
+    volumes:
+      - "./playground/:/playground/"
+  dind:
+    image: "docker:20.10-dind"
+    entrypoint:
+      /bin/sh -c "rm -f /var/run/docker.pid && rm -f /var/run/docker/containerd/containerd.pid && dockerd --host=tcp://0.0.0.0:2375"
+    privileged: true
+    volumes:
+      - "./playground/:/playground/"
