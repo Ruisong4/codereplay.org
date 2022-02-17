@@ -1,6 +1,6 @@
 {
   "private": true,
-  "name": "types.codereplay.org",
+  "name": "@codereplay/types",
   "version": "2022.2.0",
   "license": "MIT",
   "main": "dist/index.js",
@@ -30,8 +30,5 @@
     "rimraf": "3.0.2",
     "runtypes": "6.5.0",
     "typescript": "4.5.5"
-  },
-  "dependencies": {
-    "@cs124/ace-recorder-types": "^2022.2.6"
   }
 }

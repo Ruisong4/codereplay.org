@@ -50,11 +50,6 @@
   resolved "https://registry.yarnpkg.com/@cs124/ace-recorder-types/-/ace-recorder-types-2022.2.7.tgz#075e90bbe6c5cc4da900a4beee9fd0ee9dccf95f"
   integrity sha512-XAVbJ6za7YTyfNDLKkEHNYuMjRE+zstVNWrpAIuv96X++lOdqltivj7w6uAHjbDduMcM9NY9MAADLyiSYkDeJQ==
 
-"@cs124/ace-recorder-types@^2022.2.6":
-  version "2022.2.6"
-  resolved "https://registry.yarnpkg.com/@cs124/ace-recorder-types/-/ace-recorder-types-2022.2.6.tgz#597503ac1d9b12ebb036fcf4dda0f26313649533"
-  integrity sha512-1ITmMQO+jct2feIli6ggkNThx6kAtxDh6vJsNjnU79cPbtWDVdG18t8Q6nkD79Un4TlZ3qFeqk5cy/CJGTrdaA==
-
 "@cs124/ace-recorder@2022.2.9":
   version "2022.2.9"
   resolved "https://registry.yarnpkg.com/@cs124/ace-recorder/-/ace-recorder-2022.2.9.tgz#aca11f124459676b69848d36411df131d612cb7e"
