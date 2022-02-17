@@ -23,12 +23,15 @@
     "@typescript-eslint/parser": "5.12.0",
     "eslint": "8.9.0",
     "eslint-config-prettier": "8.3.0",
-    "npm-check-updates": "12.3.0",
+    "npm-check-updates": "12.3.1",
     "prettier": "2.5.1",
     "prettier-package-json": "2.6.0",
     "prettier-plugin-organize-imports": "2.3.4",
     "rimraf": "3.0.2",
     "runtypes": "6.5.0",
     "typescript": "4.5.5"
+  },
+  "dependencies": {
+    "@cs124/ace-recorder-types": "^2022.2.6"
   }
 }

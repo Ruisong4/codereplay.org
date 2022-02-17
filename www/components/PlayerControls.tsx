@@ -1,18 +1,27 @@
-import { IRecordReplayer } from "@cs124/ace-recorder"
+import { IRecordReplayer, MultiRecordReplayer } from "@cs124/ace-recorder"
+import { useSession } from "next-auth/react"
 import { useCallback, useEffect, useRef, useState } from "react"
 
 const PlayerControls: React.FC<{
-  recordReplayer: IRecordReplayer
-  canRecord: boolean
-}> = ({ recordReplayer, canRecord }) => {
+  recordReplayer: MultiRecordReplayer
+}> = ({ recordReplayer }) => {
+  const { data } = useSession()
   const [wasPlaying, setWasPlaying] = useState(false)
-
+  const [value, setValue] = useState(0)
   const [state, setState] = useState<IRecordReplayer.State>("paused")
+  const [hasSource, setHasSource] = useState(false)
+
   useEffect(() => {
     recordReplayer.addStateListener((s) => setState(s))
+    recordReplayer.addEventListener((e) => {
+      if (e === "ended") {
+        setValue(0)
+      } else if (e === "srcChanged") {
+        setHasSource(recordReplayer.src !== undefined)
+      }
+    })
   }, [recordReplayer])
 
-  const [value, setValue] = useState(0)
   const handleChange = useCallback(
     (event) => {
       recordReplayer.percent = event.target.value
@@ -41,6 +50,7 @@ const PlayerControls: React.FC<{
     <div>
       <div style={{ display: "flex", width: "100%", flexDirection: "row", alignItems: "center" }}>
         <button
+          disabled={state === "paused" && !hasSource}
           onClick={() => {
             if (state === "paused") {
               recordReplayer.play()
@@ -53,16 +63,36 @@ const PlayerControls: React.FC<{
         >
           {state === "paused" ? <>Play</> : state === "recording" ? <>Stop</> : <>Pause</>}
         </button>
-        {canRecord && (
-          <button
-            disabled={state !== "paused"}
-            onClick={() => {
-              recordReplayer.record()
-            }}
-          >
-            Record
-          </button>
-        )}
+        <button
+          disabled={!data || state !== "paused"}
+          onClick={() => {
+            recordReplayer.record()
+          }}
+        >
+          Record
+        </button>
+        <button
+          disabled={!hasSource || state === "recording"}
+          onClick={() => {
+            if (state === "playing") {
+              recordReplayer.pause()
+            }
+            recordReplayer.src = undefined
+          }}
+        >
+          Clear
+        </button>
+        <button
+          disabled={state !== "paused"}
+          onClick={() => {
+            Object.values(recordReplayer.ace.players).forEach((player) => {
+              player.editor.setValue("")
+              player.editor.clearSelection()
+            })
+          }}
+        >
+          Reset
+        </button>
         <select id="playbackRate" onChange={(e) => setPlaybackRate(e.target.value)} value={playbackRate.toString()}>
           <option value="0.5">0.5</option>
           <option value="1.0">1.0</option>

@@ -1,5 +1,5 @@
 import { Session } from "next-auth"
-import { useSession } from "next-auth/react"
+import { useSession, signOut } from "next-auth/react"
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react"
 
 export interface NewWindowLoginContext {

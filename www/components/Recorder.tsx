@@ -2,6 +2,7 @@ import { Ace, MultiRecordReplayer } from "@cs124/ace-recorder"
 import { Result, Submission } from "@cs124/playground-types"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { IAceEditor } from "react-ace/lib/types"
+import { TraceSummary } from "types.codereplay.org"
 import { uploadTrace } from "../lib/uploader"
 import DefaultAceEditor from "./DefaultAceEditor"
 import PlayerControls from "./PlayerControls"
@@ -23,21 +24,32 @@ const DEFAULT_FILES = {
   scala3: "Main.sc",
 } as Record<language, string>
 
-const Recorder: React.FC<{ source: MultiRecordReplayer.Content | undefined }> = ({ source }) => {
+const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordReplayer.Content } | undefined }> = ({
+  source,
+}) => {
   const editors = useRef<Record<string, Ace.Editor>>({})
   const aceEditorRef = useRef<IAceEditor>()
   const aceOutputRef = useRef<IAceEditor>()
   const [recordReplayer, setRecordReplayer] = useState<MultiRecordReplayer | undefined>(undefined)
   const [state, setState] = useState<MultiRecordReplayer.State>("paused")
 
+  const [recorderState, setRecorderState] = useState<"playingTrace" | "readyToRecord" | "canUpload">("readyToRecord")
   const [hasRecording, setHasRecording] = useState(false)
-
   useEffect(() => {
-    recordReplayer?.addStateListener((s) => {
-      setState(s)
-      setHasRecording(recordReplayer.hasRecording)
+    recordReplayer?.addStateListener((s) => setState(s))
+    recordReplayer?.addEventListener((e) => {
+      if (e === "srcChanged") {
+        if (recordReplayer.hasRecording) {
+          setRecorderState("canUpload")
+        } else if (recordReplayer.src === undefined) {
+          setRecorderState("readyToRecord")
+        } else {
+          setRecorderState("playingTrace")
+        }
+        setHasRecording(recordReplayer.hasRecording)
+      }
     })
-  }, [recordReplayer])
+  }, [recordReplayer, source])
 
   const [mode, setMode] = useState<language>("python")
   const [running, setRunning] = useState(false)
@@ -144,17 +156,40 @@ const Recorder: React.FC<{ source: MultiRecordReplayer.Content | undefined }> = 
     })
   }, [recordReplayer, mode])
 
+  const initialLoad = useRef(true)
   useEffect(() => {
     if (!recordReplayer) {
       return
     }
-    recordReplayer.src = source
+    if (recordReplayer.state === "playing") {
+      recordReplayer.pause()
+    }
+    recordReplayer.src = source?.trace
+    initialLoad.current === false && recordReplayer.play()
+    initialLoad.current = false
   }, [recordReplayer, source])
 
+  let message
+  if (recorderState === "readyToRecord") {
+    message = (
+      <p>
+        Use the record button to start recording, play to replay when you are finished, and clear to remove your
+        recording.
+      </p>
+    )
+  } else if (recorderState === "canUpload") {
+    message = <p>You may upload your recorded trace using the button below, or clear it and start over.</p>
+  } else {
+    message = (
+      <p>
+        You are viewing a trace by {source?.summary.email} in {source?.summary.mode}.
+      </p>
+    )
+  }
   return (
     <div>
-      <p>Use the record button to start recording, and play to replay when you are finished.</p>
-      {recordReplayer && <PlayerControls canRecord={source === undefined} recordReplayer={recordReplayer} />}
+      {message}
+      {recordReplayer && <PlayerControls recordReplayer={recordReplayer} />}
       {state === "recording" && recordStartTime.current != 0 && (
         <div style={{ display: "flex" }}>{Math.floor((Date.now() - recordStartTime.current) / 1000)}</div>
       )}

@@ -1,4 +1,3 @@
-import { AceTraceContent } from "@cs124/ace-recorder-types"
 import { Result, Submission } from "@cs124/playground-types"
 import cors from "@koa/cors"
 import multer, { File } from "@koa/multer"
@@ -13,10 +12,11 @@ import { jwtDecrypt } from "jose"
 import Koa, { DefaultContext, DefaultState, ParameterizedContext } from "koa"
 import koaBody from "koa-body"
 import logger from "koa-logger"
+import ratelimit from "koa-ratelimit"
 import { MongoClient as mongo } from "mongodb"
 import mongodbUri from "mongodb-uri"
-import { InstanceOf, Record, String } from "runtypes"
-import { TraceSummary } from "types.codereplay.org"
+import { String } from "runtypes"
+import { SavedTrace, TraceSummary, UploadedTrace } from "types.codereplay.org"
 
 const fetch = retryBuilder(originalFetch)
 
@@ -26,6 +26,7 @@ const playgroundCollection = database.then((d) => d.collection(process.env.MONGO
 const traceCollection = database.then((d) => d.collection(process.env.MONGODB_COLLECTION || "trace"))
 
 const ENCRYPTION_KEY = hkdf("sha256", process.env.SECRET, "", "NextAuth.js Generated Encryption Key", 32)
+const VALID_DOMAINS = process.env.VALID_DOMAINS?.split(",").map((s) => s.trim())
 
 type User = {
   email: string
@@ -41,22 +42,11 @@ type Context = ParameterizedContext<
 >
 const router = new Router<Context>()
 
+const started = new Date()
+let playgroundCount = 0
 router.get("/", async (ctx: Context) => {
-  ctx.body = { user: ctx.user }
+  ctx.body = { what: "api.codereplay.org", started, playgroundCount }
 })
-
-const UploadedTrace = Record({
-  mode: String,
-  trace: Record({
-    code: AceTraceContent,
-    output: AceTraceContent,
-  }),
-})
-const SavedTrace = UploadedTrace.And(
-  Record({
-    timestamp: InstanceOf(Date),
-  })
-)
 
 const processUpload = async (ctx: Context) => {
   const collection = await traceCollection
@@ -139,6 +129,7 @@ router.post("/playground", async (ctx: Context) => {
   const start = new Date()
   const collection = await playgroundCollection
   const request = Submission.check(ctx.request.body)
+  playgroundCount++
   request.timeout = 8000
   let response
   try {
@@ -199,7 +190,40 @@ const decryptToken = async (ctx: Koa.Context, next: () => Promise<any>) => {
   await next()
 }
 
-const server = new Koa()
+const db = new Map()
+const server = new Koa({ proxy: true })
+  .use(
+    cors({
+      origin: (ctx) => {
+        if (
+          !ctx.headers.origin ||
+          (VALID_DOMAINS &&
+            !VALID_DOMAINS.includes(ctx.headers.origin) &&
+            !VALID_DOMAINS.includes(ctx.headers.origin.split(".").slice(-2).join(".")))
+        ) {
+          return ""
+        } else {
+          return ctx.headers.origin
+        }
+      },
+      maxAge: 86400,
+      credentials: true,
+    })
+  )
+  .use(
+    ratelimit({
+      driver: "memory",
+      db: db,
+      duration: process.env.RATE_LIMIT_MS ? parseInt(process.env.RATE_LIMIT_MS) : 100,
+      headers: {
+        remaining: "Rate-Limit-Remaining",
+        reset: "Rate-Limit-Reset",
+        total: "Rate-Limit-Total",
+      },
+      max: 1,
+      whitelist: (ctx) => ctx.request.method === "GET",
+    })
+  )
   .use(logger())
   .use(
     cors({
@@ -215,5 +239,6 @@ const server = new Koa()
 
 Promise.resolve().then(async () => {
   console.log(`Started codereplay...`)
+  playgroundCount = await (await playgroundCollection).countDocuments()
   server.listen(process.env.PORT || 8888)
 })

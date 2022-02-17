@@ -22,18 +22,21 @@ const Home: NextPage = () => {
       })
   }, [data])
 
-  const [source, setSource] = useState<MultiRecordReplayer.Content | undefined>()
-  const getTrace = useCallback(async (trace: TraceSummary) => {
-    const aceTrace = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/downloads/${trace.fileRoot}.json`).then((r) =>
+  const [source, setSource] = useState<{ trace: MultiRecordReplayer.Content; summary: TraceSummary } | undefined>()
+  const getTrace = useCallback(async (summary: TraceSummary) => {
+    const trace = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/downloads/${summary.fileRoot}.json`).then((r) =>
       r.json()
     )
-    setSource({ ace: aceTrace.trace, audio: `${process.env.NEXT_PUBLIC_API_URL}/downloads/${trace.fileRoot}.mp3` })
+    setSource({
+      summary,
+      trace: { ace: trace.trace, audio: `${process.env.NEXT_PUBLIC_API_URL}/downloads/${summary.fileRoot}.mp3` },
+    })
   }, [])
 
   return (
     <>
       <LoginButton />
-      {data && <Recorder source={source} />}
+      <Recorder source={source} />
       {traces.map((trace, key) => (
         <button onClick={() => getTrace(trace)} key={key}>
           {trace.email} {trace.timestamp} ({trace.mode})
