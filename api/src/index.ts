@@ -44,7 +44,7 @@ const processUpload = async (ctx: Context) => {
     await exec(`ffmpeg -i ${audioInputFile} ${audioRoot}.webm`)
     await exec(`ffmpeg -i ${audioInputFile} ${audioRoot}.mp4`)
 
-    const traceFile = files["audio"][0].path
+    const traceFile = files["trace"][0].path
     await fs.copyFile(traceFile, `/downloads/${now}.json`)
   } catch (err) {
     await del([`/downloads/${now}*`])
