@@ -1,0 +1,34 @@
+{
+  "private": true,
+  "name": "types.codereplay.org",
+  "version": "2022.2.0",
+  "license": "MIT",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "rimraf dist && tsc",
+    "clean": "rimraf dist",
+    "eslint": "eslint src/**",
+    "ncu": "ncu",
+    "prepublish": "rimraf dist && tsc",
+    "start": "yarn watch",
+    "prettier": "prettier -w --plugin=prettier-plugin-organize-imports . && prettier-package-json --write",
+    "watch": "tsc -w"
+  },
+  "types": "dist/index.d.ts",
+  "peerDependencies": {
+    "runtypes": ">= 6"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "5.12.0",
+    "@typescript-eslint/parser": "5.12.0",
+    "eslint": "8.9.0",
+    "eslint-config-prettier": "8.3.0",
+    "npm-check-updates": "12.3.0",
+    "prettier": "2.5.1",
+    "prettier-package-json": "2.6.0",
+    "prettier-plugin-organize-imports": "2.3.4",
+    "rimraf": "3.0.2",
+    "runtypes": "6.5.0",
+    "typescript": "4.5.5"
+  }
+}

@@ -1,31 +1,44 @@
+import { MultiRecordReplayer } from "@cs124/ace-recorder"
 import type { NextPage } from "next"
 import { useSession } from "next-auth/react"
 import dynamic from "next/dynamic"
-import { useCallback, useEffect } from "react"
+import { useCallback, useEffect, useState } from "react"
+import { Array } from "runtypes"
+import { TraceSummary } from "types.codereplay.org"
 import LoginButton from "../components/LoginButton"
-import { uploadTrace } from "../lib/uploader"
 
 const Recorder = dynamic(() => import("../components/Recorder"), { ssr: false })
 
 const Home: NextPage = () => {
   const { data } = useSession()
+
+  const [traces, setTraces] = useState<TraceSummary[]>([])
+
   useEffect(() => {
-    fetch(process.env.NEXT_PUBLIC_API_URL, { credentials: "include" })
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/traces`, { credentials: "include" })
       .then((r) => r.json())
       .then((response) => {
-        console.log(response)
+        setTraces(Array(TraceSummary).check(response.traces))
       })
   }, [data])
 
-  const testUpload = useCallback(() => {
-    uploadTrace({ test: "me" }, new ArrayBuffer(1024 * 1024 * 32), (loaded) => console.log(loaded))
+  const [source, setSource] = useState<MultiRecordReplayer.Content | undefined>()
+  const getTrace = useCallback(async (trace: TraceSummary) => {
+    const aceTrace = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/downloads/${trace.fileRoot}.json`).then((r) =>
+      r.json()
+    )
+    setSource({ ace: aceTrace.trace, audio: `${process.env.NEXT_PUBLIC_API_URL}/downloads/${trace.fileRoot}.mp3` })
   }, [])
 
   return (
     <>
       <LoginButton />
-      <button onClick={testUpload}>Test Upload</button>
-      <Recorder />
+      {data && <Recorder source={source} />}
+      {traces.map((trace, key) => (
+        <button onClick={() => getTrace(trace)} key={key}>
+          {trace.email} {trace.timestamp} ({trace.mode})
+        </button>
+      ))}
     </>
   )
 }

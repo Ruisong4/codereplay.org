@@ -3,7 +3,8 @@ import { useCallback, useEffect, useRef, useState } from "react"
 
 const PlayerControls: React.FC<{
   recordReplayer: IRecordReplayer
-}> = ({ recordReplayer }) => {
+  canRecord: boolean
+}> = ({ recordReplayer, canRecord }) => {
   const [wasPlaying, setWasPlaying] = useState(false)
 
   const [state, setState] = useState<IRecordReplayer.State>("paused")
@@ -52,14 +53,16 @@ const PlayerControls: React.FC<{
         >
           {state === "paused" ? <>Play</> : state === "recording" ? <>Stop</> : <>Pause</>}
         </button>
-        <button
-          disabled={state !== "paused"}
-          onClick={() => {
-            recordReplayer.record()
-          }}
-        >
-          Record
-        </button>
+        {canRecord && (
+          <button
+            disabled={state !== "paused"}
+            onClick={() => {
+              recordReplayer.record()
+            }}
+          >
+            Record
+          </button>
+        )}
         <select id="playbackRate" onChange={(e) => setPlaybackRate(e.target.value)} value={playbackRate.toString()}>
           <option value="0.5">0.5</option>
           <option value="1.0">1.0</option>

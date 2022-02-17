@@ -17,7 +17,8 @@
     "watch": "npm-watch build"
   },
   "dependencies": {
-    "@cs124/ace-recorder": "2022.2.1",
+    "types.codereplay.org": "2022.2.0",
+    "@cs124/ace-recorder-types": "2022.2.6",
     "@cs124/playground-types": "2021.11.3",
     "@koa/cors": "3.1.0",
     "@koa/multer": "3.0.0",
@@ -33,6 +34,8 @@
     "koa": "2.13.4",
     "koa-body": "4.2.0",
     "koa-logger": "3.2.1",
+    "mongodb": "^4.3.1",
+    "mongodb-uri": "^0.9.7",
     "multer": "1.4.4",
     "next-auth": "4.2.1",
     "runtypes": "6.5.0"
@@ -45,6 +48,7 @@
     "@types/koa-logger": "3.1.2",
     "@types/koa__multer": "2.0.4",
     "@types/koa__router": "8.0.11",
+    "@types/mongodb-uri": "^0.9.1",
     "@typescript-eslint/eslint-plugin": "5.12.0",
     "@typescript-eslint/parser": "5.12.0",
     "babel-eslint": "10.1.0",

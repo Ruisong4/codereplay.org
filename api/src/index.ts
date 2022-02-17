@@ -1,3 +1,4 @@
+import { AceTraceContent } from "@cs124/ace-recorder-types"
 import { Result, Submission } from "@cs124/playground-types"
 import cors from "@koa/cors"
 import multer, { File } from "@koa/multer"
@@ -12,8 +13,17 @@ import { jwtDecrypt } from "jose"
 import Koa, { DefaultContext, DefaultState, ParameterizedContext } from "koa"
 import koaBody from "koa-body"
 import logger from "koa-logger"
-import { String } from "runtypes"
+import { MongoClient as mongo } from "mongodb"
+import mongodbUri from "mongodb-uri"
+import { InstanceOf, Record, String } from "runtypes"
+import { TraceSummary } from "types.codereplay.org"
+
 const fetch = retryBuilder(originalFetch)
+
+const client = mongo.connect(process.env.MONGODB as string)
+const database = client.then((c) => c.db(mongodbUri.parse(String.check(process.env.MONGODB)).database))
+const playgroundCollection = database.then((d) => d.collection(process.env.MONGODB_COLLECTION || "playground"))
+const traceCollection = database.then((d) => d.collection(process.env.MONGODB_COLLECTION || "trace"))
 
 const ENCRYPTION_KEY = hkdf("sha256", process.env.SECRET, "", "NextAuth.js Generated Encryption Key", 32)
 
@@ -25,6 +35,7 @@ type User = {
 type Context = ParameterizedContext<
   DefaultState,
   DefaultContext & {
+    email?: string
     user?: User
   }
 >
@@ -34,18 +45,49 @@ router.get("/", async (ctx: Context) => {
   ctx.body = { user: ctx.user }
 })
 
+const UploadedTrace = Record({
+  mode: String,
+  trace: Record({
+    code: AceTraceContent,
+    output: AceTraceContent,
+  }),
+})
+const SavedTrace = UploadedTrace.And(
+  Record({
+    timestamp: InstanceOf(Date),
+  })
+)
+
 const processUpload = async (ctx: Context) => {
-  const now = Date.now()
+  const collection = await traceCollection
+  const now = new Date()
   const files = ctx.request.files as { [key: string]: File[] }
 
   try {
-    const audioRoot = `/downloads/${now}`
+    const traceFile = files["trace"][0].path
+
+    const trace = UploadedTrace.check(JSON.parse((await fs.readFile(traceFile)).toString()))
+    ctx.assert(Math.abs(trace.trace.code.duration - trace.trace.output.duration) <= 100, 400)
+
+    const audioRoot = `/downloads/${now.valueOf()}`
     const audioInputFile = files["audio"][0].path
     await exec(`ffmpeg -i ${audioInputFile} ${audioRoot}.webm`)
     await exec(`ffmpeg -i ${audioInputFile} ${audioRoot}.mp4`)
+    await exec(`ffmpeg -i ${audioInputFile} ${audioRoot}.mp3`)
 
-    const traceFile = files["trace"][0].path
-    await fs.copyFile(traceFile, `/downloads/${now}.json`)
+    await fs.writeFile(
+      `/downloads/${now.valueOf()}.json`,
+      JSON.stringify(SavedTrace.check({ timestamp: now, ...trace }))
+    )
+    await collection.insertOne(
+      TraceSummary.check({
+        email: ctx.email,
+        mode: trace.mode,
+        duration: trace.trace.code.duration,
+        fileRoot: now.valueOf(),
+        timestamp: now,
+      })
+    )
   } catch (err) {
     await del([`/downloads/${now}*`])
   } finally {
@@ -72,7 +114,8 @@ router.post(
       maxCount: 1,
     },
   ]),
-  async (ctx: Koa.Context) => {
+  async (ctx: Context) => {
+    ctx.assert(ctx.email, 401)
     processUpload(ctx)
     ctx.body = {}
   }
@@ -80,10 +123,21 @@ router.post(
 
 const PLAYGROUND_SERVER = String.check(process.env.PLAYGROUND_SERVER)
 
-router.post("/playground", async (ctx) => {
-  // const start = new Date()
-  // const collection = await _collection
-  console.log(ctx.request.body)
+router.get("/traces", async (ctx: Context) => {
+  const collection = await traceCollection
+
+  const traces = (await collection.find({}).toArray()).map((t) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    delete (t as any)._id
+    return TraceSummary.check(t)
+  })
+
+  ctx.body = { traces }
+})
+
+router.post("/playground", async (ctx: Context) => {
+  const start = new Date()
+  const collection = await playgroundCollection
   const request = Submission.check(ctx.request.body)
   request.timeout = 8000
   let response
@@ -103,10 +157,10 @@ router.post("/playground", async (ctx) => {
     })
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (err: any) {
-    /*
     collection?.insertOne({
+      type: "submission",
       succeeded: false,
-      ...request,
+      request,
       start,
       end: new Date(),
       ip: ctx.request.ip,
@@ -114,22 +168,20 @@ router.post("/playground", async (ctx) => {
       ...(ctx.email && { email: ctx.email }),
       ...(ctx.headers.origin && { origin: ctx.headers.origin }),
     })
-    */
     return ctx.throw(400, err.toString())
   }
-  console.log(response)
   ctx.body = response
-  /*
   collection?.insertOne({
+    type: "submission",
     succeeded: true,
-    ...response,
+    request,
+    response,
     start,
     end: new Date(),
     ip: ctx.request.ip,
     ...(ctx.email && { email: ctx.email }),
     ...(ctx.headers.origin && { origin: ctx.headers.origin }),
   })
-  */
 })
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -142,6 +194,7 @@ const decryptToken = async (ctx: Koa.Context, next: () => Promise<any>) => {
       payload: { name, email },
     } = await jwtDecrypt(token, encryptionKey, { clockTolerance: 15 })
     ctx.user = { name, email }
+    ctx.email = email
   }
   await next()
 }

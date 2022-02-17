@@ -23,15 +23,20 @@ const DEFAULT_FILES = {
   scala3: "Main.sc",
 } as Record<language, string>
 
-const Recorder: React.FC = () => {
+const Recorder: React.FC<{ source: MultiRecordReplayer.Content | undefined }> = ({ source }) => {
   const editors = useRef<Record<string, Ace.Editor>>({})
   const aceEditorRef = useRef<IAceEditor>()
   const aceOutputRef = useRef<IAceEditor>()
   const [recordReplayer, setRecordReplayer] = useState<MultiRecordReplayer | undefined>(undefined)
   const [state, setState] = useState<MultiRecordReplayer.State>("paused")
 
+  const [hasRecording, setHasRecording] = useState(false)
+
   useEffect(() => {
-    recordReplayer?.addStateListener((s) => setState(s))
+    recordReplayer?.addStateListener((s) => {
+      setState(s)
+      setHasRecording(recordReplayer.hasRecording)
+    })
   }, [recordReplayer])
 
   const [mode, setMode] = useState<language>("python")
@@ -56,7 +61,7 @@ const Recorder: React.FC = () => {
     })
 
     setRunning(true)
-    const result = await fetch(PLAYGROUND_ENDPOINT, {
+    await fetch(PLAYGROUND_ENDPOINT, {
       method: "post",
       body: JSON.stringify(submission),
       headers: {
@@ -134,15 +139,22 @@ const Recorder: React.FC = () => {
       .then((r) => r.arrayBuffer())
 
     setUploading(true)
-    uploadTrace(ace, audio).then(() => {
+    uploadTrace({ trace: ace, mode }, audio).then(() => {
       setUploading(false)
     })
-  }, [recordReplayer])
+  }, [recordReplayer, mode])
+
+  useEffect(() => {
+    if (!recordReplayer) {
+      return
+    }
+    recordReplayer.src = source
+  }, [recordReplayer, source])
 
   return (
     <div>
       <p>Use the record button to start recording, and play to replay when you are finished.</p>
-      {recordReplayer && <PlayerControls recordReplayer={recordReplayer} />}
+      {recordReplayer && <PlayerControls canRecord={source === undefined} recordReplayer={recordReplayer} />}
       {state === "recording" && recordStartTime.current != 0 && (
         <div style={{ display: "flex" }}>{Math.floor((Date.now() - recordStartTime.current) / 1000)}</div>
       )}
@@ -171,12 +183,11 @@ const Recorder: React.FC = () => {
           renderer.$cursorLayer.element.style.display = "none"
         }}
       />
-      <button
-        onClick={upload}
-        disabled={uploading || state === "empty" || state === "playing" || state === "recording"}
-      >
-        Upload
-      </button>
+      {hasRecording && (
+        <button onClick={upload} disabled={uploading}>
+          Upload
+        </button>
+      )}
     </div>
   )
 }
