@@ -3,7 +3,6 @@ import Ace, { IAceEditorProps } from "react-ace"
 const DefaultAceEditor: React.FC<IAceEditorProps> = (props) => {
   return (
     <Ace
-      mode="java"
       theme="github"
       width="100%"
       minLines={4}

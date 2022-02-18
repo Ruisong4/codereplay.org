@@ -17,7 +17,7 @@
     "watch": "npm-watch build"
   },
   "dependencies": {
-    "@cs124/ace-recorder-types": "2022.2.7",
+    "@cs124/ace-recorder-types": "2022.2.8",
     "@cs124/playground-types": "2021.11.3",
     "@koa/cors": "3.1.0",
     "@koa/multer": "3.0.0",
@@ -34,7 +34,7 @@
     "koa-body": "4.2.0",
     "koa-logger": "3.2.1",
     "koa-ratelimit": "^5.0.1",
-    "mongodb": "^4.3.1",
+    "mongodb": "^4.4.0",
     "mongodb-uri": "^0.9.7",
     "multer": "1.4.4",
     "next-auth": "4.2.1",

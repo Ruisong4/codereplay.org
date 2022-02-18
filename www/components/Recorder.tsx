@@ -30,23 +30,27 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
   const editors = useRef<Record<string, Ace.Editor>>({})
   const aceEditorRef = useRef<IAceEditor>()
   const aceOutputRef = useRef<IAceEditor>()
-  const [recordReplayer, setRecordReplayer] = useState<MultiRecordReplayer | undefined>(undefined)
+  const recordReplayer = useRef<MultiRecordReplayer>()
   const [state, setState] = useState<MultiRecordReplayer.State>("paused")
+  const [showOutput, setShowOutput] = useState(false)
 
   const [recorderState, setRecorderState] = useState<"playingTrace" | "readyToRecord" | "canUpload">("readyToRecord")
   const [hasRecording, setHasRecording] = useState(false)
   useEffect(() => {
-    recordReplayer?.addStateListener((s) => setState(s))
-    recordReplayer?.addEventListener((e) => {
+    recordReplayer.current?.addStateListener((s) => setState(s))
+    recordReplayer.current?.addEventListener((e) => {
+      if (!recordReplayer.current) {
+        return
+      }
       if (e === "srcChanged") {
-        if (recordReplayer.hasRecording) {
+        if (recordReplayer.current.hasRecording) {
           setRecorderState("canUpload")
-        } else if (recordReplayer.src === undefined) {
+        } else if (recordReplayer.current.src === undefined) {
           setRecorderState("readyToRecord")
         } else {
           setRecorderState("playingTrace")
         }
-        setHasRecording(recordReplayer.hasRecording)
+        setHasRecording(recordReplayer.current.hasRecording)
       }
     })
   }, [recordReplayer, source])
@@ -73,6 +77,7 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
     })
 
     setRunning(true)
+    setShowOutput(true)
     await fetch(PLAYGROUND_ENDPOINT, {
       method: "post",
       body: JSON.stringify(submission),
@@ -110,12 +115,33 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
     aceOutputRef.current?.clearSelection()
   }, [result])
 
+  const savedShowOutput = useRef(showOutput)
+  useEffect(() => {
+    savedShowOutput.current = showOutput
+  }, [showOutput])
+
   const finishInitialization = useCallback(() => {
     if (Object.keys(editors.current).length !== 2) {
       return
     }
-    const newRecordReplayer = new MultiRecordReplayer(editors.current)
-    setRecordReplayer(newRecordReplayer)
+    recordReplayer.current = new MultiRecordReplayer(editors.current, {
+      filterRecord: (record, name) => {
+        if (name !== "output" || record.type !== "external") {
+          return true
+        }
+        const r = record as any
+        if (r.showOutput !== undefined) {
+          setShowOutput(r.showOutput)
+          return false
+        }
+        return true
+      },
+    })
+    recordReplayer.current.addEventListener((e) => {
+      if (e === "startedRecording") {
+        recordReplayer.current!.ace.recorders["output"].addExternalChange({ showOutput: savedShowOutput.current })
+      }
+    })
   }, [])
 
   const [, setTick] = useState(true)
@@ -139,10 +165,10 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
 
   const [uploading, setUploading] = useState(false)
   const upload = useCallback(async () => {
-    if (!recordReplayer || !recordReplayer.src) {
+    if (!recordReplayer.current || !recordReplayer.current.src) {
       return
     }
-    const { ace, audio: audioURL } = recordReplayer.src
+    const { ace, audio: audioURL } = recordReplayer.current.src
     if (!ace) {
       return
     }
@@ -158,16 +184,33 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
 
   const initialLoad = useRef(true)
   useEffect(() => {
-    if (!recordReplayer) {
+    if (!recordReplayer.current) {
       return
     }
-    if (recordReplayer.state === "playing") {
-      recordReplayer.pause()
+    if (recordReplayer.current.state === "playing") {
+      recordReplayer.current.pause()
     }
-    recordReplayer.src = source?.trace
-    initialLoad.current === false && recordReplayer.play()
+    recordReplayer.current.src = source?.trace
+    initialLoad.current === false && recordReplayer.current.play()
     initialLoad.current = false
   }, [recordReplayer, source])
+
+  const toggleOutput = useCallback(() => {
+    setShowOutput((o) => !o)
+  }, [])
+
+  useEffect(() => {
+    if (
+      state !== "recording" ||
+      !recordReplayer.current ||
+      !recordReplayer.current?.ace?.recorders["output"].recording
+    ) {
+      return
+    }
+    recordReplayer.current.ace.recorders["output"].addExternalChange({
+      showOutput,
+    })
+  }, [state, showOutput])
 
   let message
   if (recorderState === "readyToRecord") {
@@ -189,12 +232,17 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
   return (
     <div>
       {message}
-      {recordReplayer && <PlayerControls recordReplayer={recordReplayer} />}
+      {recordReplayer.current && <PlayerControls recordReplayer={recordReplayer.current} />}
       {state === "recording" && recordStartTime.current != 0 && (
         <div style={{ display: "flex" }}>{Math.floor((Date.now() - recordStartTime.current) / 1000)}</div>
       )}
-      <button onClick={run}>Run</button>
+      <div style={{ display: "flex", flexDirection: "row" }}>
+        <button onClick={run}>Run</button>
+        <button onClick={toggleOutput}>{showOutput ? "Hide" : "Show"} Output</button>
+      </div>
       <DefaultAceEditor
+        height={showOutput ? "64px" : "128px"}
+        maxLines={0}
         mode={mode}
         onLoad={(ace) => {
           aceEditorRef.current = ace
@@ -202,22 +250,25 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
           finishInitialization()
         }}
       />
-      <DefaultAceEditor
-        readOnly
-        showGutter={false}
-        showPrintMargin={false}
-        highlightActiveLine={false}
-        theme="ambiance"
-        mode={"text"}
-        onLoad={(ace) => {
-          aceOutputRef.current = ace
-          editors.current["output"] = ace
-          finishInitialization()
+      <div style={{ display: showOutput ? "block" : "none" }}>
+        <DefaultAceEditor
+          height={"64px"}
+          readOnly
+          showGutter={false}
+          showPrintMargin={false}
+          highlightActiveLine={false}
+          theme="ambiance"
+          mode={"text"}
+          onLoad={(ace) => {
+            aceOutputRef.current = ace
+            editors.current["output"] = ace
+            finishInitialization()
 
-          const renderer = ace.renderer as any
-          renderer.$cursorLayer.element.style.display = "none"
-        }}
-      />
+            const renderer = ace.renderer as any
+            renderer.$cursorLayer.element.style.display = "none"
+          }}
+        />
+      </div>
       {hasRecording && (
         <button onClick={upload} disabled={uploading}>
           Upload
