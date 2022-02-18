@@ -1,10 +1,10 @@
+import { TraceSummary } from "@codereplay/types"
 import { MultiRecordReplayer } from "@cs124/ace-recorder"
 import type { NextPage } from "next"
 import { useSession } from "next-auth/react"
 import dynamic from "next/dynamic"
 import { useCallback, useEffect, useState } from "react"
 import { Array } from "runtypes"
-import { TraceSummary } from "types.codereplay.org"
 import LoginButton from "../components/LoginButton"
 
 const Recorder = dynamic(() => import("../components/Recorder"), { ssr: false })
@@ -38,9 +38,11 @@ const Home: NextPage = () => {
       <LoginButton />
       <Recorder source={source} />
       {traces.map((trace, key) => (
-        <button onClick={() => getTrace(trace)} key={key}>
-          {trace.email} {trace.timestamp} ({trace.mode})
-        </button>
+        <div key={key}>
+          <a onClick={() => getTrace(trace)}>
+            {trace.email} {trace.timestamp} ({trace.mode})
+          </a>
+        </div>
       ))}
     </>
   )

@@ -16,7 +16,7 @@ import ratelimit from "koa-ratelimit"
 import { MongoClient as mongo } from "mongodb"
 import mongodbUri from "mongodb-uri"
 import { String } from "runtypes"
-import { SavedTrace, TraceSummary, UploadedTrace } from "types.codereplay.org"
+import { SavedTrace, TraceSummary, UploadedTrace } from "@codereplay/types"
 
 const fetch = retryBuilder(originalFetch)
 
