@@ -1,5 +1,5 @@
-import { Ace, MultiRecordReplayer } from "@cs124/ace-recorder"
-import { TraceSummary } from "@cs124/ace-recorder-types"
+import { Ace, MultiRecordReplayer } from "@codereplay/ace-recorder"
+import { TraceSummary } from "@codereplay/types"
 import { Result, Submission } from "@cs124/playground-types"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { IAceEditor } from "react-ace/lib/types"

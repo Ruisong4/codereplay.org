@@ -1,4 +1,5 @@
-import { IRecordReplayer, MultiRecordReplayer } from "@codereplay/types"
+import { IRecordReplayer } from "@codereplay/types"
+import { MultiRecordReplayer } from "@codereplay/ace-recorder"
 import { useSession } from "next-auth/react"
 import { useCallback, useEffect, useRef, useState } from "react"
 
