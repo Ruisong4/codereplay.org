@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@codereplay/types": "2022.2.0",
-    "@cs124/ace-recorder": "2022.2.11",
+    "@cs124/ace-recorder": "2022.2.14",
     "@cs124/playground-types": "2021.11.3",
     "ace-builds": "1.4.13",
     "next": "12.0.10",

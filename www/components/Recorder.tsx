@@ -36,24 +36,6 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
 
   const [recorderState, setRecorderState] = useState<"playingTrace" | "readyToRecord" | "canUpload">("readyToRecord")
   const [hasRecording, setHasRecording] = useState(false)
-  useEffect(() => {
-    recordReplayer.current?.addStateListener((s) => setState(s))
-    recordReplayer.current?.addEventListener((e) => {
-      if (!recordReplayer.current) {
-        return
-      }
-      if (e === "srcChanged") {
-        if (recordReplayer.current.hasRecording) {
-          setRecorderState("canUpload")
-        } else if (recordReplayer.current.src === undefined) {
-          setRecorderState("readyToRecord")
-        } else {
-          setRecorderState("playingTrace")
-        }
-        setHasRecording(recordReplayer.current.hasRecording)
-      }
-    })
-  }, [recordReplayer, source])
 
   const [mode, setMode] = useState<language>("python")
   const [running, setRunning] = useState(false)
@@ -120,6 +102,7 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
     savedShowOutput.current = showOutput
   }, [showOutput])
 
+  const [finishedInitialization, setFinishedInitialization] = useState(false)
   const finishInitialization = useCallback(() => {
     if (Object.keys(editors.current).length !== 2) {
       return
@@ -142,6 +125,23 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
         recordReplayer.current!.ace.recorders["output"].addExternalChange({ showOutput: savedShowOutput.current })
       }
     })
+    recordReplayer.current.addStateListener((s) => setState(s))
+    recordReplayer.current.addEventListener((e) => {
+      if (!recordReplayer.current) {
+        return
+      }
+      if (e === "srcChanged") {
+        if (recordReplayer.current.hasRecording) {
+          setRecorderState("canUpload")
+        } else if (recordReplayer.current.src === undefined) {
+          setRecorderState("readyToRecord")
+        } else {
+          setRecorderState("playingTrace")
+        }
+        setHasRecording(recordReplayer.current.hasRecording)
+      }
+    })
+    setFinishedInitialization(true)
   }, [])
 
   const [, setTick] = useState(true)
@@ -180,7 +180,7 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
     uploadTrace({ trace: ace, mode }, audio).then(() => {
       setUploading(false)
     })
-  }, [recordReplayer, mode])
+  }, [mode])
 
   const initialLoad = useRef(true)
   useEffect(() => {
@@ -193,7 +193,7 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
     recordReplayer.current.src = source?.trace
     initialLoad.current === false && recordReplayer.current.play()
     initialLoad.current = false
-  }, [recordReplayer, source])
+  }, [source])
 
   const toggleOutput = useCallback(() => {
     setShowOutput((o) => !o)
@@ -232,7 +232,7 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
   return (
     <div>
       {message}
-      {recordReplayer.current && <PlayerControls recordReplayer={recordReplayer.current} />}
+      {finishedInitialization && <PlayerControls recordReplayer={recordReplayer.current!} />}
       {state === "recording" && recordStartTime.current != 0 && (
         <div style={{ display: "flex" }}>{Math.floor((Date.now() - recordStartTime.current) / 1000)}</div>
       )}

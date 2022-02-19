@@ -1,3 +1,4 @@
+import { SavedTrace, TraceSummary, UploadedTrace } from "@codereplay/types"
 import { Result, Submission } from "@cs124/playground-types"
 import cors from "@koa/cors"
 import multer, { File } from "@koa/multer"
@@ -16,7 +17,6 @@ import ratelimit from "koa-ratelimit"
 import { MongoClient as mongo } from "mongodb"
 import mongodbUri from "mongodb-uri"
 import { String } from "runtypes"
-import { SavedTrace, TraceSummary, UploadedTrace } from "@codereplay/types"
 
 const fetch = retryBuilder(originalFetch)
 
@@ -79,6 +79,7 @@ const processUpload = async (ctx: Context) => {
       })
     )
   } catch (err) {
+    console.log(err)
     await del([`/downloads/${now}*`])
   } finally {
     for (const key of Object.keys(files)) {

@@ -45,20 +45,15 @@
   dependencies:
     regenerator-runtime "^0.13.4"
 
-"@cs124/ace-recorder-types@2022.2.8":
+"@cs124/ace-recorder-types@2022.2.8", "@cs124/ace-recorder-types@^2022.2.8":
   version "2022.2.8"
   resolved "https://registry.yarnpkg.com/@cs124/ace-recorder-types/-/ace-recorder-types-2022.2.8.tgz#e3a43dd5b851077113bb66a9494c9c34b7c714ed"
   integrity sha512-j7E0saWEiesWYaK2vuMn7Np1FanebcTq8j7Ki2En1ykAF70LqmYP2nKq4zQmw/OnogAwNnqqtpHw6tRZgEooPA==
 
-"@cs124/ace-recorder-types@^2022.2.7":
-  version "2022.2.7"
-  resolved "https://registry.yarnpkg.com/@cs124/ace-recorder-types/-/ace-recorder-types-2022.2.7.tgz#075e90bbe6c5cc4da900a4beee9fd0ee9dccf95f"
-  integrity sha512-XAVbJ6za7YTyfNDLKkEHNYuMjRE+zstVNWrpAIuv96X++lOdqltivj7w6uAHjbDduMcM9NY9MAADLyiSYkDeJQ==
-
-"@cs124/ace-recorder@2022.2.11":
-  version "2022.2.11"
-  resolved "https://registry.yarnpkg.com/@cs124/ace-recorder/-/ace-recorder-2022.2.11.tgz#1c9310a582d1d24f11a6c4b8d7395e9d8774aa7e"
-  integrity sha512-3QuD6bGDVgBw2YJtaqs2aPVEqGJPp8b0KBaSrZfvCVW0+QITO4aN7DT0HSGFwLWgzMCOd0bMeUreyxvz6oQ/MQ==
+"@cs124/ace-recorder@2022.2.14":
+  version "2022.2.14"
+  resolved "https://registry.yarnpkg.com/@cs124/ace-recorder/-/ace-recorder-2022.2.14.tgz#7915b2b03bc949608166a95dad7b8decc487606d"
+  integrity sha512-Dm3ymMXIuuosd9y5yZCeS3VegtDKqNzDppMFePIfas7BThJ6SuxhXFi074KT6JJ7iGvNsQgvsPQST8k/qeNdRw==
   dependencies:
     "@cs124/ace-recorder-types" "2022.2.8"
     fix-webm-duration "1.0.4"

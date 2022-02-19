@@ -17,8 +17,11 @@ export const UploadedTrace = Record({
     output: AceTraceContent,
   }),
 })
+export type UploadedTrace = Static<typeof UploadedTrace>
+
 export const SavedTrace = UploadedTrace.And(
   Record({
     timestamp: InstanceOf(Date),
   })
 )
+export type SavedTrace = Static<typeof SavedTrace>
