@@ -2,8 +2,10 @@
     "private": true,
     "workspaces": [
         "types",
-        "www",
-        "api"
+        "lib",
+        "demo",
+        "api",
+        "www"
     ],
-    "version": "2021.12.0"
+    "version": "2022.2.0"
 }

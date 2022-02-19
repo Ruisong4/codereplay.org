@@ -1,0 +1,127 @@
+import { AceRecord, AceTrace, ExternalChange, SessionInfo } from "@codereplay/types"
+import ace, { Ace } from "ace-builds"
+import EventEmitter from "events"
+import type TypedEmitter from "typed-emitter"
+import AceStreamer, { getComplete } from "./Streamer"
+
+export interface AceRecorderEvents {
+  record: (record: AceRecord) => void
+}
+class AceRecorder extends (EventEmitter as new () => TypedEmitter<AceRecorderEvents>) {
+  private editor: Ace.Editor
+  private streamer: AceStreamer
+  public recording = false
+  private records: AceRecord[] = []
+  private timer?: ReturnType<typeof setInterval>
+  private options?: AceRecorder.Options
+  public src?: AceTrace
+  private sessionMap: Record<string, { session: Ace.EditSession; mode: string }> = {}
+  private sessionName?: string
+  private startSession = ""
+  private sessionInfo: SessionInfo[] = []
+
+  public constructor(editor: Ace.Editor, options?: AceRecorder.Options) {
+    super()
+    this.editor = editor
+    this.streamer = new AceStreamer(editor)
+    this.options = options
+  }
+  public async start() {
+    const interval = this.options?.completeInterval || 1000
+    this.records = []
+    this.src = undefined
+
+    if (Object.keys(this.sessionMap).length === 0 && this.sessionName === undefined) {
+      this.sessionMap[""] = {
+        session: this.editor.getSession(),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        mode: (this.editor.getSession() as any).$modeId,
+      }
+      this.sessionName = ""
+    } else if (Object.keys(this.sessionMap).length === 0 || this.sessionName === undefined) {
+      throw new Error(`Session information not properly configured: ${this.sessionName}`)
+    }
+
+    this.sessionInfo = Object.entries(this.sessionMap).map(([name, info]) => {
+      return { name, contents: info.session.getValue(), mode: info.mode }
+    })
+    this.startSession = this.sessionName || ""
+
+    this.streamer.start((record: AceRecord) => {
+      this.records.push(record)
+      this.emit("record", record)
+    })
+    this.timer = setInterval(() => {
+      this.addCompleteRecord("timer")
+    }, interval)
+
+    this.recording = true
+  }
+  public async stop() {
+    if (!this.recording) {
+      throw new Error("Not recording")
+    }
+    this.timer && clearInterval(this.timer)
+    this.streamer!.stop()
+    this.src = new AceTrace([...this.records], this.sessionInfo, this.startSession)
+  }
+  public addExternalChange(change: Record<string, unknown>) {
+    if (!this.recording) {
+      throw new Error("Not recording")
+    }
+    if (change.type !== undefined) {
+      throw new Error("type property in external changes is overwritten")
+    }
+    const record = ExternalChange.check({
+      ...change,
+      type: "external",
+      timestamp: new Date(),
+    })
+    this.records.push(record)
+    this.emit("record", record)
+  }
+  public addCompleteRecord(reason = "manual") {
+    if (!this.recording) {
+      throw new Error("Not recording")
+    }
+    const record = getComplete(this.editor, reason, this.sessionName)
+    this.records.push(record)
+    this.emit("record", record)
+  }
+  public addSession(session: AceRecorder.Session) {
+    const { name, contents, mode } = session
+    if (this.sessionMap[name]) {
+      throw new Error(`Session ${name} already exists`)
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    this.sessionMap[name] = { session: ace.createEditSession(contents, mode as any), mode }
+  }
+  public addSessions(sessions: AceRecorder.Session[]) {
+    for (const session of sessions) {
+      this.addSession(session)
+    }
+  }
+  public setSession(name: string) {
+    if (!this.sessionMap[name]) {
+      throw new Error(`Session ${name} does not exist`)
+    }
+    this.sessionName = this.streamer.sessionName = name
+    this.editor.setSession(this.sessionMap[name].session)
+  }
+  public singleSession(session: AceRecorder.Session) {
+    if (Object.keys(this.sessionMap).length > 0) {
+      throw new Error("Session map must be empty when calling singleSession")
+    }
+    this.addSession(session)
+    this.sessionName = session.name
+  }
+}
+
+module AceRecorder {
+  export type Session = { name: string; contents: string; mode: string }
+  export type Options = {
+    completeInterval?: number
+  }
+}
+
+export default AceRecorder

@@ -5,10 +5,10 @@
   "scripts": {
     "build": "esbuild src/index.ts --sourcemap --bundle --platform=node --outfile=bundled/index.js",
     "predocker:build": "yarn build",
-    "docker:build": "docker build --build-arg VERSION=$npm_package_version --build-arg GIT_COMMIT=$(git show --no-patch --format=%h) --build-arg BUILD_DATE=`date -u +\"%Y-%m-%dT%H:%M:%SZ\"` . -t cs124/codereplay-api:latest",
+    "docker:build": "docker build --build-arg VERSION=$npm_package_version --build-arg GIT_COMMIT=$(git show --no-patch --format=%h) --build-arg BUILD_DATE=`date -u +\"%Y-%m-%dT%H:%M:%SZ\"` . -t codereplay/api:latest",
     "postdocker:build": "yarn docker:tag",
-    "docker:push": "docker push cs124/codereplay-api:latest && docker push cs124/codereplay-api:$npm_package_version",
-    "docker:tag": "docker tag cs124/codereplay-api:latest cs124/codereplay-api:$npm_package_version",
+    "docker:push": "docker push codereplay/api:latest && docker push codereplay/api:$npm_package_version",
+    "docker:tag": "docker tag codereplay/api:latest codereplay/api:$npm_package_version",
     "eslint": "eslint src/**",
     "ncu": "ncu",
     "run:docker": "docker compose up",
@@ -17,7 +17,6 @@
     "watch": "npm-watch build"
   },
   "dependencies": {
-    "@cs124/ace-recorder-types": "2022.2.8",
     "@cs124/playground-types": "2021.11.3",
     "@koa/cors": "3.1.0",
     "@koa/multer": "3.0.0",
@@ -38,8 +37,7 @@
     "mongodb-uri": "^0.9.7",
     "multer": "1.4.4",
     "next-auth": "4.2.1",
-    "runtypes": "6.5.0",
-    "@codereplay/types": "2022.2.0"
+    "runtypes": "6.5.0"
   },
   "devDependencies": {
     "@types/child-process-promise": "2.2.2",

@@ -1,0 +1,4 @@
+.next
+*.mdx
+dist
+public
