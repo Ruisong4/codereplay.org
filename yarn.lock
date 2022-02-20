@@ -56,6 +56,11 @@
     throttle-debounce "3.0.1"
     whatwg-mimetype "3.0.0"
 
+"@codereplay/types@2022.2.0":
+  version "2022.2.0"
+  resolved "https://registry.yarnpkg.com/@codereplay/types/-/types-2022.2.0.tgz#cef25c4c676059d54e2a4308b44b439683b36458"
+  integrity sha512-0nNPMvT6uQAtZT49Ezv94R5DV4rUQo/bhqo91ZebEnC3l4xtcT62ZtknElTUCqY0cSmpNBM/dDcO8MGoctcfiQ==
+
 "@cs124/ace-recorder-types@2022.2.8":
   version "2022.2.8"
   resolved "https://registry.yarnpkg.com/@cs124/ace-recorder-types/-/ace-recorder-types-2022.2.8.tgz#e3a43dd5b851077113bb66a9494c9c34b7c714ed"
