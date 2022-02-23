@@ -107,13 +107,15 @@ class AceRecorder extends (EventEmitter as new () => TypedEmitter<AceRecorderEve
     }
     this._external = external
     this.streamer.external = external
-    const record = ExternalChange.check({
-      external,
-      type: "external",
-      timestamp: new Date(),
-    })
-    this.records.push(record)
-    this.emit("record", record)
+    if (this.recording) {
+      const record = ExternalChange.check({
+        external,
+        type: "external",
+        timestamp: new Date(),
+      })
+      this.records.push(record)
+      this.emit("record", record)
+    }
   }
 }
 
