@@ -94,6 +94,7 @@ class MultiRecordReplayer implements IRecordReplayer {
     if (this.state !== "paused") {
       throw new Error("Not paused")
     }
+    this.emitter.emit("event", "startingRecording")
     await this._audio.record()
     await this._ace.record()
     this.state = "recording"

@@ -19,6 +19,7 @@ class AceRecorder extends (EventEmitter as new () => TypedEmitter<AceRecorderEve
   private sessionName?: string
   private startSession = ""
   private sessionInfo: SessionInfo[] = []
+  private _external?: Record<string, unknown>
 
   public constructor(editor: Ace.Editor, options?: AceRecorder.Options) {
     super()
@@ -65,26 +66,11 @@ class AceRecorder extends (EventEmitter as new () => TypedEmitter<AceRecorderEve
     this.streamer!.stop()
     this.src = new AceTrace([...this.records], this.sessionInfo, this.startSession)
   }
-  public addExternalChange(change: Record<string, unknown>) {
-    if (!this.recording) {
-      throw new Error("Not recording")
-    }
-    if (change.type !== undefined) {
-      throw new Error("type property in external changes is overwritten")
-    }
-    const record = ExternalChange.check({
-      ...change,
-      type: "external",
-      timestamp: new Date(),
-    })
-    this.records.push(record)
-    this.emit("record", record)
-  }
   public addCompleteRecord(reason = "manual") {
     if (!this.recording) {
       throw new Error("Not recording")
     }
-    const record = getComplete(this.editor, reason, this.sessionName)
+    const record = getComplete(this.editor, reason, this.sessionName, this._external)
     this.records.push(record)
     this.emit("record", record)
   }
@@ -114,6 +100,20 @@ class AceRecorder extends (EventEmitter as new () => TypedEmitter<AceRecorderEve
     }
     this.addSession(session)
     this.sessionName = session.name
+  }
+  public set external(external: Record<string, unknown>) {
+    if (external.type !== undefined) {
+      throw new Error("type property in external changes is overwritten")
+    }
+    this._external = external
+    this.streamer.external = external
+    const record = ExternalChange.check({
+      external,
+      type: "external",
+      timestamp: new Date(),
+    })
+    this.records.push(record)
+    this.emit("record", record)
   }
 }
 

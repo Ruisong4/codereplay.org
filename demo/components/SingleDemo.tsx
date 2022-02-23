@@ -40,16 +40,8 @@ const Demo: React.FC = () => {
 
   const [active, setActive] = useState<string>("Main.java")
   const [replayActive, setReplayActive] = useState<string | undefined>()
-
-  useEffect(() => {
-    recordReplayer?.addStateListener((s) => setState(s))
-  }, [recordReplayer])
-
-  useEffect(() => {
-    if (state === "recording") {
-      setRecording(undefined)
-    }
-  }, [state, recordReplayer])
+  const [checked, setChecked] = useState(false)
+  const _checked = useRef(false)
 
   const [uploading, setUploading] = useState(false)
   const upload = useCallback(async () => {
@@ -76,6 +68,13 @@ const Demo: React.FC = () => {
     }
     const newRecordReplayer = new RecordReplayer(recordEditor.current, {
       replayEditor: replayEditor.current,
+      filterRecord: (record) => {
+        if (record.type === "external" || record.type === "complete") {
+          setChecked((record as any).external.checked)
+          return false
+        }
+        return true
+      },
     })
     newRecordReplayer.ace.scrollToCursor = true
     newRecordReplayer.ace.recorder.addListener("record", (record) => {
@@ -89,6 +88,15 @@ const Demo: React.FC = () => {
       { name: "Another.java", contents: "", mode: "ace/mode/java" },
     ])
     newRecordReplayer.ace.recorder.setSession("Main.java")
+    newRecordReplayer.addStateListener((s) => setState(s))
+    newRecordReplayer.addEventListener((e) => {
+      if (e === "startingRecording") {
+        setRecording(undefined)
+        newRecordReplayer.ace.recorder.external = {
+          checked: _checked.current,
+        }
+      }
+    })
     setRecordReplayer(newRecordReplayer)
   }, [])
 
@@ -159,6 +167,22 @@ const Demo: React.FC = () => {
         <button onClick={() => setActive("Another.java")}>
           <kbd style={{ fontWeight: active === "Another.java" ? "bold" : "inherit" }}>Another.java</kbd>
         </button>
+      </div>
+
+      <div>
+        <input
+          checked={checked}
+          type="checkbox"
+          onChange={(e) => {
+            _checked.current = e.currentTarget.checked
+            setChecked(e.currentTarget.checked)
+            if (recordReplayer) {
+              recordReplayer.ace.recorder.external = {
+                checked: _checked.current,
+              }
+            }
+          }}
+        />
       </div>
 
       <span>Play</span>

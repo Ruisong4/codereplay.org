@@ -1,6 +1,7 @@
 import {
   Array,
   Boolean,
+  Dictionary,
   InstanceOf,
   Literal,
   Number,
@@ -9,6 +10,7 @@ import {
   Static,
   String,
   Union,
+  Unknown,
 } from "runtypes"
 
 export const AceTimestamp = Union(
@@ -48,6 +50,7 @@ export const Complete = RuntypeRecord({
 }).And(
   Partial({
     sessionName: String,
+    external: Dictionary(Unknown),
   })
 )
 export type Complete = Static<typeof Complete>
@@ -205,7 +208,13 @@ export interface IRecordReplayer {
 }
 export namespace IRecordReplayer {
   export type State = "paused" | "playing" | "recording"
-  export type Event = "ended" | "srcChanged" | "seeked" | "playbackRateChange" | "startedRecording"
+  export type Event =
+    | "ended"
+    | "srcChanged"
+    | "seeked"
+    | "playbackRateChange"
+    | "startedRecording"
+    | "startingRecording"
 }
 
 export const TraceSummary = RuntypeRecord({
