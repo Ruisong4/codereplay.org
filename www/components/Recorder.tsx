@@ -1,11 +1,13 @@
 import { Ace, MultiRecordReplayer } from "@codereplay/ace-recorder"
-import { TraceSummary } from "@codereplay/types"
+import { TraceSummary, SessionInfo } from "@codereplay/types"
 import { Result, Submission } from "@cs124/playground-types"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { IAceEditor } from "react-ace/lib/types"
 import { uploadTrace } from "../lib/uploader"
 import DefaultAceEditor from "./DefaultAceEditor"
 import PlayerControls from "./PlayerControls"
+import { ReflexContainer, ReflexSplitter, ReflexElement, HandlerProps } from "react-reflex"
+import { useSession } from "next-auth/react"
 
 const PLAYGROUND_ENDPOINT = `${process.env.NEXT_PUBLIC_API_URL}/playground`
 
@@ -30,9 +32,11 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
   const editors = useRef<Record<string, Ace.Editor>>({})
   const aceEditorRef = useRef<IAceEditor>()
   const aceOutputRef = useRef<IAceEditor>()
+  const containerResizerRef = useRef<HTMLDivElement>(null)
   const recordReplayer = useRef<MultiRecordReplayer>()
   const [state, setState] = useState<MultiRecordReplayer.State>("paused")
   const [showOutput, setShowOutput] = useState(false)
+  const { data } = useSession()
 
   const [recorderState, setRecorderState] = useState<"playingTrace" | "readyToRecord" | "canUpload">("readyToRecord")
   const [hasRecording, setHasRecording] = useState(false)
@@ -41,7 +45,15 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
   const [running, setRunning] = useState(false)
   const [result, setResult] = useState<{ result?: Result; error?: string } | undefined>()
 
-  const run = useCallback(async () => {
+  const [containerHeight, setContainerHeight] = useState(200)
+  const [aceEditorHeight, setAceEditorHeight] = useState(1 / 2)
+  const [aceOutputHeight, setAceOutputHeight] = useState(1 / 2)
+
+  const [active, setActive] = useState<string>("main.py")
+  const [sessions, setSessions] = useState<string>("main.py")
+
+  console.log(data)
+  const run = useCallback(async (runAll=false) => {
     if (!aceEditorRef.current) {
       return
     }
@@ -57,6 +69,14 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
       filesystem: [{ path, contents: content }],
       timeout: 8000,
     })
+
+    if (runAll) {
+      let sessions = recordReplayer.current!.ace.recorders["code"].getSessionsInfo();
+      submission.filesystem = sessions.map((session: SessionInfo) => {
+        return {path: session.name, contents: session.contents}
+      })
+    }
+
 
     setRunning(true)
     setShowOutput(true)
@@ -92,6 +112,11 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
   }, [running])
 
   useEffect(() => {
+    if (recordReplayer.current)
+    recordReplayer.current!.ace.recorders["code"].setSession(active)
+  }, [active])
+
+  useEffect(() => {
     const output = result?.error || result?.result?.outputLines.map(({ line }) => line).join("\n") || ""
     aceOutputRef.current?.setValue(output)
     aceOutputRef.current?.clearSelection()
@@ -102,6 +127,12 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
     savedShowOutput.current = showOutput
   }, [showOutput])
 
+  const savedContainerHeight = useRef(containerHeight)
+  useEffect(() => {
+    savedContainerHeight.current = containerHeight
+  }, [containerHeight])
+
+
   const [finishedInitialization, setFinishedInitialization] = useState(false)
   const finishInitialization = useCallback(() => {
     if (Object.keys(editors.current).length !== 2) {
@@ -109,20 +140,30 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
     }
     recordReplayer.current = new MultiRecordReplayer(editors.current, {
       filterRecord: (record, name) => {
-        if (name !== "output" || record.type !== "external") {
+        if (name !== "output" || (record.type !== "external" && record.type !== "complete") || record.external === undefined) {
           return true
         }
+
         const r = record as any
-        if (r.showOutput !== undefined) {
-          setShowOutput(r.showOutput)
-          return false
+        let filtered = true
+        if (r.external.showOutput !== undefined) {
+          setShowOutput(r.external.showOutput)
+          filtered = false
         }
-        return true
+
+        if (r.external.containerHeight !== undefined) {
+          setContainerHeight(r.external.containerHeight)
+          filtered = false
+        }
+        return filtered || record.type === "complete"
       },
     })
     recordReplayer.current.addEventListener((e) => {
       if (e === "startedRecording") {
-        recordReplayer.current!.ace.recorders["output"].addExternalChange({ showOutput: savedShowOutput.current })
+        recordReplayer.current!.ace.recorders["output"].external = {
+          showOutput: savedShowOutput.current,
+          containerHeight: savedContainerHeight.current
+        }
       }
     })
     recordReplayer.current.addStateListener((s) => setState(s))
@@ -141,6 +182,9 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
         setHasRecording(recordReplayer.current.hasRecording)
       }
     })
+    recordReplayer.current.ace.recorders["code"].addSession({name: "main.py", contents: "", mode: "ace/mode/python"})
+    recordReplayer.current.ace.recorders["code"].setSession("main.py")
+    setActive("main.py")
     setFinishedInitialization(true)
   }, [])
 
@@ -207,9 +251,9 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
     ) {
       return
     }
-    recordReplayer.current.ace.recorders["output"].addExternalChange({
-      showOutput,
-    })
+    recordReplayer.current.ace.recorders["output"].external = {
+      showOutput: savedShowOutput.current
+    }
   }, [state, showOutput])
 
   let message
@@ -237,9 +281,94 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
         <div style={{ display: "flex" }}>{Math.floor((Date.now() - recordStartTime.current) / 1000)}</div>
       )}
       <div style={{ display: "flex", flexDirection: "row" }}>
-        <button onClick={run}>Run</button>
+        <button onClick={()=>run(false)}>Run</button>
+        <button onClick={()=>run(true)}>Run All</button>
         <button onClick={toggleOutput}>{showOutput ? "Hide" : "Show"} Output</button>
+        <select disabled={!(recorderState === "readyToRecord" && state === "paused")}  onChange={e => setMode((e as React.ChangeEvent<HTMLSelectElement>).target.value as language)}>
+          {recorderState === "playingTrace" ?
+            <option value={source?.summary.mode}>{source?.summary.mode}</option>
+            : Object.keys(DEFAULT_FILES).map(ele => <option key={ele} value={ele}>{ele}</option>)
+          }
+        </select>
       </div>
+      <div style={{ display: "flex", flexDirection: "row" }}>
+        {sessions.split(",").map((str, idx) => {
+          return <button key={idx} onClick={() => setActive(str)}>{str}</button>
+        })}
+        <button onClick={()=>{
+          let newSession = "Another" + sessions.split(",").length + ".py"
+          setSessions(sessions + "," + newSession)
+          recordReplayer.current!.ace.recorders["code"].addSession( { name: newSession, contents: "", mode: "ace/mode/python" })
+          setActive(newSession)
+        }}>Create New File</button>
+        {active}
+      </div>
+
+      <ReflexContainer orientation="horizontal" style={{height:showOutput ? containerHeight + 5 + "px" : containerHeight + "px", display:"flex", flexDirection:"column"}}>
+        <ReflexElement onResize={args => {
+          if (args.component.props.flex) {
+            setAceEditorHeight(args.component.props.flex)
+          }
+        }} maxSize={containerHeight} minSize={0}>
+          <DefaultAceEditor
+            height={showOutput ? aceEditorHeight * containerHeight + "px" : containerHeight + "px"}
+            maxLines={0}
+            mode={mode}
+            onLoad={(ace) => {
+              aceEditorRef.current = ace
+              editors.current["code"] = ace
+              finishInitialization()
+            }}
+          />
+        </ReflexElement>
+        <ReflexSplitter style={{height:"5px", backgroundColor:"black", cursor:"row-resize", display: showOutput ? "block" : "none"}}/>
+        <ReflexElement onResize={args => {
+          if (args.component.props.flex) {
+            setAceOutputHeight(args.component.props.flex)
+          }
+        }} maxSize={containerHeight} minSize={0} style={{display: showOutput ? "block" : "none"}}>
+          <DefaultAceEditor
+            readOnly
+            height={aceOutputHeight * containerHeight + "px"}
+            showGutter={false}
+            maxLines={0}
+            showPrintMargin={false}
+            highlightActiveLine={false}
+            theme="ambiance"
+            mode={"text"}
+            onLoad={(ace) => {
+              aceOutputRef.current = ace
+              editors.current["output"] = ace
+              finishInitialization()
+
+              const renderer = ace.renderer as any
+              renderer.$cursorLayer.element.style.display = "none"
+            }}
+          />
+        </ReflexElement>
+      </ReflexContainer>
+      {recorderState === "readyToRecord" && state === "paused" && (
+        <div ref={containerResizerRef} style={{height: "5px", width:"100%", backgroundColor:"black", cursor: "row-resize"}} onMouseDown={e => {
+          let start = e.pageY
+          const clearEvents = (e: MouseEvent) => {
+            document.removeEventListener("mouseup", clearEvents)
+            document.removeEventListener("mousemove", resizeContainer)
+          }
+          const resizeContainer = (e: MouseEvent) => {
+            setContainerHeight(containerHeight + e.pageY - start)
+          }
+
+          document.addEventListener('mouseup', clearEvents)
+          document.addEventListener('mousemove', resizeContainer)
+        }}>
+        </div>
+      )}
+      {hasRecording && (
+        <button onClick={upload} disabled={uploading}>
+          Upload
+        </button>
+      )}
+      {/*
       <DefaultAceEditor
         height={showOutput ? "64px" : "128px"}
         maxLines={0}
@@ -263,7 +392,6 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
             aceOutputRef.current = ace
             editors.current["output"] = ace
             finishInitialization()
-
             const renderer = ace.renderer as any
             renderer.$cursorLayer.element.style.display = "none"
           }}
@@ -274,6 +402,7 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
           Upload
         </button>
       )}
+      */}
     </div>
   )
 }

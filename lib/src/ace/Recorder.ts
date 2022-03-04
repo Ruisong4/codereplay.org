@@ -79,6 +79,9 @@ class AceRecorder extends (EventEmitter as new () => TypedEmitter<AceRecorderEve
     if (this.sessionMap[name]) {
       throw new Error(`Session ${name} already exists`)
     }
+    if (this.recording) {
+      this.sessionInfo.push({ name, contents: contents, mode: mode })
+    }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     this.sessionMap[name] = { session: ace.createEditSession(contents, mode as any), mode }
   }
@@ -87,6 +90,13 @@ class AceRecorder extends (EventEmitter as new () => TypedEmitter<AceRecorderEve
       this.addSession(session)
     }
   }
+
+  public getSessionsInfo() {
+    return Object.entries(this.sessionMap).map(([name, info]) => {
+      return { name, contents: info.session.getValue(), mode: info.mode }
+    })
+  }
+
   public setSession(name: string) {
     if (!this.sessionMap[name]) {
       throw new Error(`Session ${name} does not exist`)
