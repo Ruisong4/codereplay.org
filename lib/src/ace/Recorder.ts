@@ -97,6 +97,13 @@ class AceRecorder extends (EventEmitter as new () => TypedEmitter<AceRecorderEve
     })
   }
 
+  public clearSessions() {
+    if (this.recording) {
+      throw new Error("cannot clear sessions while recording")
+    }
+    this.sessionMap = {}
+  }
+
   public setSession(name: string) {
     if (!this.sessionMap[name]) {
       throw new Error(`Session ${name} does not exist`)

@@ -10,7 +10,7 @@ import { ReflexContainer, ReflexSplitter, ReflexElement, HandlerProps } from "re
 import { useSession } from "next-auth/react"
 
 const PLAYGROUND_ENDPOINT = `${process.env.NEXT_PUBLIC_API_URL}/playground`
-
+const ILLINOIS_API_URL = `${process.env.NEXT_PUBLIC_ILLINOIS_API_URL}/playground`
 type language = "python" | "cpp" | "haskell" | "java" | "julia" | "r" | "c" | "go" | "rust" | "scala3" | "kotlin"
 const DEFAULT_FILES = {
   python: "main.py",
@@ -52,7 +52,6 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
   const [active, setActive] = useState<string>("main.py")
   const [sessions, setSessions] = useState<string>("main.py")
 
-  console.log(data)
   const run = useCallback(async (runAll=false) => {
     if (!aceEditorRef.current) {
       return
@@ -77,10 +76,16 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
       })
     }
 
+    let endpoint = PLAYGROUND_ENDPOINT;
+    /**
+    if (data?.user?.email?.endsWith("illinois.edu")) {
+      endpoint = ILLINOIS_API_URL
+    }
+    **/
 
     setRunning(true)
     setShowOutput(true)
-    await fetch(PLAYGROUND_ENDPOINT, {
+    await fetch(endpoint, {
       method: "post",
       body: JSON.stringify(submission),
       headers: {
@@ -284,7 +289,11 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
         <button onClick={()=>run(false)}>Run</button>
         <button onClick={()=>run(true)}>Run All</button>
         <button onClick={toggleOutput}>{showOutput ? "Hide" : "Show"} Output</button>
-        <select disabled={!(recorderState === "readyToRecord" && state === "paused")}  onChange={e => setMode((e as React.ChangeEvent<HTMLSelectElement>).target.value as language)}>
+        <select disabled={!(recorderState === "readyToRecord" && state === "paused")}  onChange={e => {
+          recordReplayer.current!.ace.recorders["code"].clearSessions();
+          setMode((e as React.ChangeEvent<HTMLSelectElement>).target.value as language);
+          setSessions(DEFAULT_FILES[(e as React.ChangeEvent<HTMLSelectElement>).target.value as language])
+        }}>
           {recorderState === "playingTrace" ?
             <option value={source?.summary.mode}>{source?.summary.mode}</option>
             : Object.keys(DEFAULT_FILES).map(ele => <option key={ele} value={ele}>{ele}</option>)
@@ -296,9 +305,9 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
           return <button key={idx} onClick={() => setActive(str)}>{str}</button>
         })}
         <button onClick={()=>{
-          let newSession = "Another" + sessions.split(",").length + ".py"
+          let newSession = "Another" + sessions.split(",").length + "." + DEFAULT_FILES[mode].split(".")[1]
           setSessions(sessions + "," + newSession)
-          recordReplayer.current!.ace.recorders["code"].addSession( { name: newSession, contents: "", mode: "ace/mode/python" })
+          recordReplayer.current!.ace.recorders["code"].addSession( { name: newSession, contents: "", mode: "ace/mode/" + mode })
           setActive(newSession)
         }}>Create New File</button>
         {active}
