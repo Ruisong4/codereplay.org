@@ -44,6 +44,7 @@ const Home: NextPage = () => {
     fetch(`${process.env.NEXT_PUBLIC_API_URL}/traces`, { credentials: "include" })
       .then((r) => r.json())
       .then((response) => {
+        response.traces.sort((a: { fileRoot: number }, b: { fileRoot: number }) => b.fileRoot - a.fileRoot)
         setTraces(Array(TraceSummary).check(response.traces))
       })
   }, [data])

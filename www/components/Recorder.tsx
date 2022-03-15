@@ -483,7 +483,7 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
       </div>
 
       <div className={"record_description_container"}>
-        <div className={"record_description_title"}>Description {
+        <div className={"record_description_title"}>Description { replayOnly ? null :
           descriptionEditing ? <div onClick={()=>setDescriptionEditing(false)}><Icon name={"lock"}/></div> : <div onClick={()=>setDescriptionEditing(true)}><Icon name={"write"}/></div>
         }</div>
         <hr/>
