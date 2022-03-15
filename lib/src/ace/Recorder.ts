@@ -1,4 +1,4 @@
-import { AceRecord, AceTrace, ExternalChange, SessionInfo } from "@codereplay/types"
+import { AceRecord, AceTrace, Complete, ExternalChange, SessionInfo } from "@codereplay/types"
 import ace, { Ace } from "ace-builds"
 import EventEmitter from "events"
 import type TypedEmitter from "typed-emitter"
@@ -49,6 +49,13 @@ class AceRecorder extends (EventEmitter as new () => TypedEmitter<AceRecorderEve
     this.startSession = this.sessionName || ""
 
     this.streamer.start((record: AceRecord) => {
+      if (Complete.guard(record)) {
+        let currentSessions = [...Object.keys(this.sessionMap)]
+        let currentSessionInfo = currentSessions.map(v => {
+          return {name: v, contents: this.sessionMap[v].session.getValue(), mode: this.sessionMap[v].mode}
+        })
+        record["sessionInfo"] = currentSessionInfo
+      }
       this.records.push(record)
       this.emit("record", record)
     })
@@ -71,6 +78,11 @@ class AceRecorder extends (EventEmitter as new () => TypedEmitter<AceRecorderEve
       throw new Error("Not recording")
     }
     const record = getComplete(this.editor, reason, this.sessionName, this._external)
+    let currentSessions = [...Object.keys(this.sessionMap)]
+    let currentSessionInfo = currentSessions.map(v => {
+      return {name: v, contents: this.sessionMap[v].session.getValue(), mode: this.sessionMap[v].mode}
+    })
+    record["sessionInfo"] = currentSessionInfo
     this.records.push(record)
     this.emit("record", record)
   }

@@ -59,6 +59,11 @@ const processUpload = async (ctx: Context) => {
     const trace = UploadedTrace.check(JSON.parse((await fs.readFile(traceFile)).toString()))
     ctx.assert(Math.abs(trace.trace.code.duration - trace.trace.output.duration) <= 100, 400)
 
+    const metadataFile = files["metadata"][0].path
+    const metadata = JSON.parse((await fs.readFile(metadataFile)).toString())
+
+    console.log(metadata)
+
     const audioRoot = `/downloads/${now.valueOf()}`
     const audioInputFile = files["audio"][0].path
     await exec(`ffmpeg -i ${audioInputFile} ${audioRoot}.webm`)
@@ -69,6 +74,7 @@ const processUpload = async (ctx: Context) => {
       `/downloads/${now.valueOf()}.json`,
       JSON.stringify(SavedTrace.check({ timestamp: now, ...trace }))
     )
+    console.log(ctx.user?.picture)
     await collection.insertOne(
       TraceSummary.check({
         email: ctx.email,
@@ -76,6 +82,11 @@ const processUpload = async (ctx: Context) => {
         duration: trace.trace.code.duration,
         fileRoot: now.valueOf(),
         timestamp: now,
+        picture: ctx.user?.picture,
+        name: ctx.user?.name,
+        title: metadata.title,
+        tag: metadata.tag,
+        description: metadata.description
       })
     )
   } catch (err) {
@@ -104,6 +115,10 @@ router.post(
       name: "audio",
       maxCount: 1,
     },
+    {
+      name: "metadata",
+      maxCount: 1,
+    }
   ]),
   async (ctx: Context) => {
     ctx.assert(ctx.email, 401)
@@ -124,6 +139,20 @@ router.get("/traces", async (ctx: Context) => {
   })
 
   ctx.body = { traces }
+})
+
+router.get("/info/:fileRoot", async (ctx: Context) => {
+  const collection = await traceCollection
+
+  const url =  ctx.request.url.split("/")
+  console.log(url[url.length-1])
+  const trace = await collection.findOne({
+    "fileRoot": Number(url[url.length-1])
+  })
+
+  delete (trace as any)._id
+
+  ctx.body = { trace }
 })
 
 router.post("/playground", async (ctx: Context) => {
@@ -183,9 +212,9 @@ const decryptToken = async (ctx: Koa.Context, next: () => Promise<any>) => {
   if (token) {
     const encryptionKey = await ENCRYPTION_KEY
     const {
-      payload: { name, email },
+      payload: { name, email, picture },
     } = await jwtDecrypt(token, encryptionKey, { clockTolerance: 15 })
-    ctx.user = { name, email }
+    ctx.user = { name, email, picture }
     ctx.email = email
   }
   await next()

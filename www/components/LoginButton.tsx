@@ -76,28 +76,12 @@ const LoginButton: React.FC<{ icon?: boolean; text?: boolean }> = ({ icon = fals
   const { session, login, logout, busy } = useNewWindowLogin()
   return (
     <>
-      {!session && (
-        <>
-          {text ? (
-            <a onClick={login}>Login</a>
-          ) : (
-            <button disabled={busy} onClick={login}>
-              Login
-            </button>
-          )}
-        </>
-      )}
-      {session && (
-        <>
-          {text ? (
-            <a onClick={logout}>Logout</a>
-          ) : (
-            <button disabled={busy} onClick={logout}>
-              Logout
-            </button>
-          )}
-        </>
-      )}
+      <div className={"login_menu_container"}>
+        <div className={"login_menu_title"}><a href={"/"}>CodeReplay</a></div>
+        <div className={"login_menu_action"} onClick={busy ? ()=>{} : session ? logout : login}>
+          {session ? "Sign Out" : "Sign in"}
+        </div>
+      </div>
     </>
   )
 }

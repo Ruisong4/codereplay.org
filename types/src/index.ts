@@ -13,6 +13,13 @@ import {
   Unknown,
 } from "runtypes"
 
+export const SessionInfo = RuntypeRecord({
+  name: String,
+  contents: String,
+  mode: String,
+})
+export type SessionInfo = Static<typeof SessionInfo>
+
 export const AceTimestamp = Union(
   InstanceOf(Date),
   String.withConstraint((s) => !isNaN(Date.parse(s).valueOf()))
@@ -51,6 +58,7 @@ export const Complete = RuntypeRecord({
   Partial({
     sessionName: String,
     external: Dictionary(Unknown),
+    sessionInfo: Array(SessionInfo)
   })
 )
 export type Complete = Static<typeof Complete>
@@ -126,12 +134,7 @@ export const WindowSizeChange = RuntypeRecord({
 })
 export type WindowSizeChange = Static<typeof WindowSizeChange>
 
-export const SessionInfo = RuntypeRecord({
-  name: String,
-  contents: String,
-  mode: String,
-})
-export type SessionInfo = Static<typeof SessionInfo>
+
 
 export const ExternalChange = RuntypeRecord({
   type: Literal("external"),

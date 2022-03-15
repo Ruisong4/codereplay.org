@@ -8,6 +8,8 @@ import DefaultAceEditor from "./DefaultAceEditor"
 import PlayerControls from "./PlayerControls"
 import { ReflexContainer, ReflexSplitter, ReflexElement, HandlerProps } from "react-reflex"
 import { useSession } from "next-auth/react"
+import { Button, Icon, Input, Message, Popup } from "semantic-ui-react"
+
 
 const PLAYGROUND_ENDPOINT = `${process.env.NEXT_PUBLIC_API_URL}/playground`
 const ILLINOIS_API_URL = `${process.env.NEXT_PUBLIC_ILLINOIS_API_URL}/playground`
@@ -51,6 +53,19 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
 
   const [active, setActive] = useState<string>("main.py")
   const [sessions, setSessions] = useState<string>("main.py")
+
+  const [title, setTitle] = useState<string>(data ? data.user?.name + "'s Coding Example" : "")
+  const [titleEditing, setTitleEditing] = useState<boolean>(false)
+
+  const [displayTopMessage, setDisplayTopMessage] = useState<boolean>(true)
+
+  const [description, setDescription] = useState<string>(data ? "this is a coding example recorded by " + data.user?.name : "")
+  const [descriptionEditing, setDescriptionEditing] = useState<boolean>(false)
+
+  const [tag, setTag] = useState<string>(mode)
+  const [tagEditing, setTagEditing] = useState<boolean>(false)
+
+  const replayOnly = source !== undefined
 
   const run = useCallback(async (runAll=false) => {
     if (!aceEditorRef.current) {
@@ -117,8 +132,13 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
   }, [running])
 
   useEffect(() => {
-    if (recordReplayer.current)
-    recordReplayer.current!.ace.recorders["code"].setSession(active)
+    if (recordReplayer.current) {
+      if (!recordReplayer.current.hasRecording && !replayOnly) {
+        recordReplayer.current!.ace.recorders["code"].setSession(active)
+      } else {
+        recordReplayer.current!.ace.players["code"].setSession(active)
+      }
+    }
   }, [active])
 
   useEffect(() => {
@@ -137,14 +157,63 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
     savedContainerHeight.current = containerHeight
   }, [containerHeight])
 
+  const savedDescription = useRef(description)
+  useEffect(() => {
+    savedDescription.current = description
+  }, [description])
+
+  const savedTitle = useRef(title)
+  useEffect(() => {
+    savedTitle.current = title
+  }, [title])
+
+
+  const savedTag = useRef(tag)
+  useEffect(() => {
+    savedTag.current = tag
+  }, [tag])
+
 
   const [finishedInitialization, setFinishedInitialization] = useState(false)
+
+  const initialLoad = useRef(true)
+
+  function setupSource() {
+    if (!recordReplayer.current) {
+      return
+    }
+    if (recordReplayer.current.state === "playing") {
+      recordReplayer.current.pause()
+    }
+
+    recordReplayer.current.src = source?.trace
+    initialLoad.current === false && recordReplayer.current.play()
+    initialLoad.current = false
+    let traceSessions = ""
+    source!.trace.ace.code.sessionInfo.forEach((info: { name: string, content: string, mode: string }) => {
+      traceSessions += traceSessions === "" ? info.name : `,${info.name}`
+    })
+    setSessions(traceSessions)
+    setActive(source!.trace.ace.code.sessionName)
+    setTitle(source!.summary.title)
+    setTag(source!.summary.tag)
+    console.log(source)
+  }
+
   const finishInitialization = useCallback(() => {
     if (Object.keys(editors.current).length !== 2) {
       return
     }
     recordReplayer.current = new MultiRecordReplayer(editors.current, {
       filterRecord: (record, name) => {
+
+        if (name === "code" && (recordReplayer.current.hasRecording || replayOnly)) {
+          const r = record as any
+          if (r.sessionName) {
+            setActive(r.sessionName)
+          }
+        }
+
         if (name !== "output" || (record.type !== "external" && record.type !== "complete") || record.external === undefined) {
           return true
         }
@@ -187,30 +256,22 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
         setHasRecording(recordReplayer.current.hasRecording)
       }
     })
-    recordReplayer.current.ace.recorders["code"].addSession({name: "main.py", contents: "", mode: "ace/mode/python"})
-    recordReplayer.current.ace.recorders["code"].setSession("main.py")
-    setActive("main.py")
+    if (!replayOnly) {
+      recordReplayer.current.ace.recorders["code"].addSession({name: "main.py", contents: "", mode: "ace/mode/python"})
+      recordReplayer.current.ace.recorders["code"].setSession("main.py")
+      setActive("main.py")
+    }
     setFinishedInitialization(true)
   }, [])
 
-  const [, setTick] = useState(true)
-  const recordStartTime = useRef(0)
 
   useEffect(() => {
-    if (state !== "recording") {
-      return
+    if (replayOnly) {
+      setupSource()
     }
-    recordStartTime.current = Date.now()
-    setTick((t) => !t)
-    const timer = setInterval(() => {
-      setTick((t) => !t)
-    }, 128)
-    return () => {
-      recordStartTime.current = 0
-      clearInterval(timer)
-      setTick((t) => !t)
-    }
-  }, [state])
+  }, [recordReplayer.current])
+
+
 
   const [uploading, setUploading] = useState(false)
   const upload = useCallback(async () => {
@@ -226,23 +287,24 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
       .then((r) => r.arrayBuffer())
 
     setUploading(true)
-    uploadTrace({ trace: ace, mode }, audio).then(() => {
+    uploadTrace({ trace: ace, mode }, audio, {
+      description: savedDescription.current,
+      title: savedTitle.current,
+      tag: savedTag.current
+    }).then(() => {
       setUploading(false)
+      window.location.href = "/"
     })
   }, [mode])
 
-  const initialLoad = useRef(true)
   useEffect(() => {
-    if (!recordReplayer.current) {
-      return
+    if (!replayOnly) {
+      let split = savedTag.current.split(",")
+      split[0] = mode
+      setTag(split.join(","))
     }
-    if (recordReplayer.current.state === "playing") {
-      recordReplayer.current.pause()
-    }
-    recordReplayer.current.src = source?.trace
-    initialLoad.current === false && recordReplayer.current.play()
-    initialLoad.current = false
-  }, [source])
+  }, [mode])
+
 
   const toggleOutput = useCallback(() => {
     setShowOutput((o) => !o)
@@ -263,155 +325,172 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
 
   let message
   if (recorderState === "readyToRecord") {
-    message = (
-      <p>
-        Use the record button to start recording, play to replay when you are finished, and clear to remove your
-        recording.
-      </p>
-    )
+    if (!data) {
+      message = <Message hidden={!displayTopMessage} color={"red"} onDismiss={()=>{setDisplayTopMessage(false)}}>You must login to record a coding demo.</Message>
+    } else
+      message = <Message hidden={!displayTopMessage} color={"yellow"} onDismiss={()=>{setDisplayTopMessage(false)}}>Use the record button to start recording, play to replay when you are finished, and clear to remove your recording.</Message>
   } else if (recorderState === "canUpload") {
-    message = <p>You may upload your recorded trace using the button below, or clear it and start over.</p>
+    message = <Message hidden={!displayTopMessage} color={"green"} onDismiss={()=>{setDisplayTopMessage(false)}}>You may upload your recorded trace using the button below, or clear it and start over.</Message>
   } else {
     message = (
-      <p>
+      <Message hidden={!displayTopMessage} color={"teal"} onDismiss={()=>{setDisplayTopMessage(false)}}>
         You are viewing a trace by {source?.summary.email} in {source?.summary.mode}.
-      </p>
+      </Message>
     )
   }
+
+  useEffect(() => {
+    setDisplayTopMessage(true)
+  }, [recorderState, data])
+  /**
+   * two buttons that will be passed into player control
+   * **/
+  const outputSwitch = <Button circular icon={showOutput ? "hide" : 'unhide'} onClick={toggleOutput}/>
+  const modeSwitch = <select disabled={!(recorderState === "readyToRecord" && state === "paused")}  onChange={e => {
+    recordReplayer.current!.ace.recorders["code"].clearSessions();
+    setMode((e as React.ChangeEvent<HTMLSelectElement>).target.value as language);
+    let firstSessionName = DEFAULT_FILES[(e as React.ChangeEvent<HTMLSelectElement>).target.value as language]
+    setSessions(firstSessionName)
+    recordReplayer.current.ace.recorders["code"].addSession({name: firstSessionName, contents: "", mode: "ace/mode/python"})
+    recordReplayer.current.ace.recorders["code"].setSession(firstSessionName)
+    setActive(firstSessionName)
+  }}>
+    {recorderState === "playingTrace" ?
+      <option value={source?.summary.mode}>{source?.summary.mode}</option>
+      : Object.keys(DEFAULT_FILES).map(ele => <option key={ele} value={ele}>{ele}</option>)
+    }
+  </select>
+
   return (
     <div>
       {message}
-      {finishedInitialization && <PlayerControls recordReplayer={recordReplayer.current!} />}
-      {state === "recording" && recordStartTime.current != 0 && (
-        <div style={{ display: "flex" }}>{Math.floor((Date.now() - recordStartTime.current) / 1000)}</div>
-      )}
-      <div style={{ display: "flex", flexDirection: "row" }}>
-        <button onClick={()=>run(false)}>Run</button>
-        <button onClick={()=>run(true)}>Run All</button>
-        <button onClick={toggleOutput}>{showOutput ? "Hide" : "Show"} Output</button>
-        <select disabled={!(recorderState === "readyToRecord" && state === "paused")}  onChange={e => {
-          recordReplayer.current!.ace.recorders["code"].clearSessions();
-          setMode((e as React.ChangeEvent<HTMLSelectElement>).target.value as language);
-          setSessions(DEFAULT_FILES[(e as React.ChangeEvent<HTMLSelectElement>).target.value as language])
-        }}>
-          {recorderState === "playingTrace" ?
-            <option value={source?.summary.mode}>{source?.summary.mode}</option>
-            : Object.keys(DEFAULT_FILES).map(ele => <option key={ele} value={ele}>{ele}</option>)
-          }
-        </select>
-      </div>
-      <div style={{ display: "flex", flexDirection: "row" }}>
-        {sessions.split(",").map((str, idx) => {
-          return <button key={idx} onClick={() => setActive(str)}>{str}</button>
-        })}
-        <button onClick={()=>{
-          let newSession = "Another" + sessions.split(",").length + "." + DEFAULT_FILES[mode].split(".")[1]
-          setSessions(sessions + "," + newSession)
-          recordReplayer.current!.ace.recorders["code"].addSession( { name: newSession, contents: "", mode: "ace/mode/" + mode })
-          setActive(newSession)
-        }}>Create New File</button>
-        {active}
+
+      <div className={"record_title_container"}>
+        {
+          titleEditing ? <Input onChange={e => setTitle(e.target.value)} value={title} className={"record_title_input"}/> : <div className={"record_title"}>{title}</div>
+        }
+        {
+          titleEditing ? <div className={"record_edit_icon"} onClick={()=>setTitleEditing(false)}><Icon name={"lock"}/></div> : replayOnly ? null : <div className={"record_edit_icon"} onClick={()=>setTitleEditing(true)}><Icon name={"edit"}/></div>
+        }
       </div>
 
-      <ReflexContainer orientation="horizontal" style={{height:showOutput ? containerHeight + 5 + "px" : containerHeight + "px", display:"flex", flexDirection:"column"}}>
-        <ReflexElement onResize={args => {
-          if (args.component.props.flex) {
-            setAceEditorHeight(args.component.props.flex)
-          }
-        }} maxSize={containerHeight} minSize={0}>
-          <DefaultAceEditor
-            height={showOutput ? aceEditorHeight * containerHeight + "px" : containerHeight + "px"}
-            maxLines={0}
-            mode={mode}
-            onLoad={(ace) => {
-              aceEditorRef.current = ace
-              editors.current["code"] = ace
-              finishInitialization()
-            }}
-          />
-        </ReflexElement>
-        <ReflexSplitter style={{height:"5px", backgroundColor:"black", cursor:"row-resize", display: showOutput ? "block" : "none"}}/>
-        <ReflexElement onResize={args => {
-          if (args.component.props.flex) {
-            setAceOutputHeight(args.component.props.flex)
-          }
-        }} maxSize={containerHeight} minSize={0} style={{display: showOutput ? "block" : "none"}}>
-          <DefaultAceEditor
-            readOnly
-            height={aceOutputHeight * containerHeight + "px"}
-            showGutter={false}
-            maxLines={0}
-            showPrintMargin={false}
-            highlightActiveLine={false}
-            theme="ambiance"
-            mode={"text"}
-            onLoad={(ace) => {
-              aceOutputRef.current = ace
-              editors.current["output"] = ace
-              finishInitialization()
+      <div className={"record_tag_container"}>
+        {
+          tagEditing ? <Input onChange={e => setTag(e.target.value)} value={tag} className={"record_tag_input"}/> : <div className={"record_tag"}>Tag: {tag}</div>
+        }
+        {
+          tagEditing ? <div className={"record_edit_icon"} onClick={()=>setTagEditing(false)}><Icon name={"lock"}/></div> : replayOnly ? null : <div className={"record_edit_icon"} onClick={()=>setTagEditing(true)}><Icon name={"add"}/></div>
+        }
+      </div>
 
-              const renderer = ace.renderer as any
-              renderer.$cursorLayer.element.style.display = "none"
-            }}
-          />
-        </ReflexElement>
-      </ReflexContainer>
-      {recorderState === "readyToRecord" && state === "paused" && (
-        <div ref={containerResizerRef} style={{height: "5px", width:"100%", backgroundColor:"black", cursor: "row-resize"}} onMouseDown={e => {
-          let start = e.pageY
-          const clearEvents = (e: MouseEvent) => {
-            document.removeEventListener("mouseup", clearEvents)
-            document.removeEventListener("mousemove", resizeContainer)
-          }
-          const resizeContainer = (e: MouseEvent) => {
-            setContainerHeight(containerHeight + e.pageY - start)
+      <div className={"record_editor_container"}>
+        <div className={"record_file_tab_container"}>
+          {
+            sessions.split(",").map((str, idx) => {
+              return <div className={active === str ? "record_file_tab_active record_file_tab" : "record_file_tab"} key={idx} onClick={() => setActive(str)}>{str}</div>
+            })
           }
 
-          document.addEventListener('mouseup', clearEvents)
-          document.addEventListener('mousemove', resizeContainer)
-        }}>
+          {
+            sessions.split(",").length < 5 && !replayOnly && !hasRecording && <Popup trigger={
+              <div className={"record_file_add"}><Icon onClick={()=>{
+                let startWithLower = DEFAULT_FILES[mode].split(".")[0][0] === DEFAULT_FILES[mode].split(".")[0][0].toLowerCase()
+                let fileName = startWithLower ? "another" : "Another"
+                fileName += sessions.split(",").length
+                let newSession = fileName + "." + DEFAULT_FILES[mode].split(".")[1]
+                setSessions(sessions + "," + newSession)
+                recordReplayer.current!.ace.recorders["code"].addSession( { name: newSession, contents: "", mode: "ace/mode/" + mode })
+                setActive(newSession)
+              }} name={"add"}/></div>} content={"Create a new file here, you can create at most 5 files"}/>
+
+          }
         </div>
-      )}
-      {hasRecording && (
-        <button onClick={upload} disabled={uploading}>
-          Upload
-        </button>
-      )}
-      {/*
-      <DefaultAceEditor
-        height={showOutput ? "64px" : "128px"}
-        maxLines={0}
-        mode={mode}
-        onLoad={(ace) => {
-          aceEditorRef.current = ace
-          editors.current["code"] = ace
-          finishInitialization()
-        }}
-      />
-      <div style={{ display: showOutput ? "block" : "none" }}>
-        <DefaultAceEditor
-          height={"64px"}
-          readOnly
-          showGutter={false}
-          showPrintMargin={false}
-          highlightActiveLine={false}
-          theme="ambiance"
-          mode={"text"}
-          onLoad={(ace) => {
-            aceOutputRef.current = ace
-            editors.current["output"] = ace
-            finishInitialization()
-            const renderer = ace.renderer as any
-            renderer.$cursorLayer.element.style.display = "none"
-          }}
-        />
+
+        <ReflexContainer className={"record_editors"} orientation="horizontal" style={{height:showOutput ? containerHeight + 5 + "px" : containerHeight + "px"}}>
+          <ReflexElement onResize={args => {
+            if (args.component.props.flex) {
+              setAceEditorHeight(args.component.props.flex)
+            }
+          }} maxSize={containerHeight} minSize={0}>
+            <DefaultAceEditor
+              height={showOutput ? aceEditorHeight * containerHeight + "px" : containerHeight + "px"}
+              maxLines={0}
+              mode={mode}
+              onLoad={(ace) => {
+                aceEditorRef.current = ace
+                editors.current["code"] = ace
+                finishInitialization()
+              }}
+            />
+          </ReflexElement>
+          <ReflexSplitter style={{height:"5px", backgroundColor:"black", cursor:"row-resize", display: showOutput ? "block" : "none"}}/>
+          <ReflexElement onResize={args => {
+            if (args.component.props.flex) {
+              setAceOutputHeight(args.component.props.flex)
+            }
+          }} maxSize={containerHeight} minSize={0} style={{display: showOutput ? "block" : "none"}}>
+            <DefaultAceEditor
+              readOnly
+              height={aceOutputHeight * containerHeight + "px"}
+              showGutter={false}
+              maxLines={0}
+              showPrintMargin={false}
+              highlightActiveLine={false}
+              theme="ambiance"
+              mode={"text"}
+              onLoad={(ace) => {
+                aceOutputRef.current = ace
+                editors.current["output"] = ace
+                finishInitialization()
+
+                const renderer = ace.renderer as any
+                renderer.$cursorLayer.element.style.display = "none"
+              }}
+            />
+          </ReflexElement>
+        </ReflexContainer>
+        {recorderState === "readyToRecord" && state === "paused" && (
+          <div ref={containerResizerRef} className={"record_container_resizer"} onMouseDown={e => {
+            let start = e.pageY
+            const clearEvents = (e: MouseEvent) => {
+              document.removeEventListener("mouseup", clearEvents)
+              document.removeEventListener("mousemove", resizeContainer)
+            }
+            const resizeContainer = (e: MouseEvent) => {
+              setContainerHeight(containerHeight + e.pageY - start)
+            }
+
+            document.addEventListener('mouseup', clearEvents)
+            document.addEventListener('mousemove', resizeContainer)
+          }}>
+          </div>
+        )}
       </div>
-      {hasRecording && (
-        <button onClick={upload} disabled={uploading}>
+      <div className={"record_controls_container"}>
+        {showOutput ? null : <div style={{height:"5px", width: "100%"}}/>}
+        {finishedInitialization && <PlayerControls recordReplayer={recordReplayer.current!} outputSwitch={outputSwitch} modeSwitch={modeSwitch} replayOnly={replayOnly}/>}
+      </div>
+
+      <div  className={"record_run_container"}>
+        <Button style={{visibility: replayOnly ? "hidden" : "visible"}} color={"red"} onClick={upload} disabled={uploading || !hasRecording}>
           Upload
-        </button>
-      )}
-      */}
+        </Button>
+        <Button.Group>
+          <Button onClick={()=>run(true)}>Run All</Button>
+          <Button.Or text='or' />
+          <Button onClick={()=>run(false)} positive>Run</Button>
+        </Button.Group>
+      </div>
+
+      <div className={"record_description_container"}>
+        <div className={"record_description_title"}>Description {
+          descriptionEditing ? <div onClick={()=>setDescriptionEditing(false)}><Icon name={"lock"}/></div> : <div onClick={()=>setDescriptionEditing(true)}><Icon name={"write"}/></div>
+        }</div>
+        <hr/>
+        {
+          descriptionEditing ? <textarea className={"record_description_ta"} value={description} onChange={e => setDescription(e.target.value)}/> : <div>{description}</div>
+        }
+      </div>
     </div>
   )
 }
