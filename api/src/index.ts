@@ -74,7 +74,6 @@ const processUpload = async (ctx: Context) => {
       `/downloads/${now.valueOf()}.json`,
       JSON.stringify(SavedTrace.check({ timestamp: now, ...trace }))
     )
-    console.log(ctx.user?.picture)
     await collection.insertOne(
       TraceSummary.check({
         email: ctx.email,

@@ -233,8 +233,13 @@ a {
 
 .record_controls_container {
   width: 70%;
-  padding: 5px;
   background-color: #3d4141;
+  margin: 0 auto;
+}
+
+.record_controls_container div input {
+  display: block;
+  width: 96%;
   margin: 0 auto;
 }
 
@@ -261,6 +266,16 @@ a {
   font-family: Inter-Bold, sans-serif;
   font-size: 2rem;
 }
+
+.record_metadata_container {
+  width: 70%;
+  margin: 0 auto
+}
+
+.record_form_title_container {
+  width: 60%;
+}
+
 
 .record_edit_icon {
   margin-left: 10px;
@@ -342,17 +357,16 @@ a {
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
-  margin: 5px auto;
+  margin: 0 auto;
 }
 
 .controls_buttons_group {
   display: flex;
 }
 
-.controls_buttons_group *:not(:first-child) {
-  margin-left: 20px !important;
+.controls_buttons_group select {
+  margin: 8px 16px 8px auto;
 }
-
 
 
 .controls_time_string {
