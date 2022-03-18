@@ -7,14 +7,15 @@ import PlayCircleFilledOutlinedIcon from "@mui/icons-material/PlayCircleFilledOu
 import PauseCircleFilledOutlinedIcon from "@mui/icons-material/PauseCircleFilledOutlined"
 import StopCircleOutlinedIcon from "@mui/icons-material/StopCircleOutlined"
 import RadioButtonCheckedOutlinedIcon from "@mui/icons-material/RadioButtonCheckedOutlined"
-import UndoOutlinedIcon from '@mui/icons-material/UndoOutlined';
+import UndoOutlinedIcon from "@mui/icons-material/UndoOutlined"
 
 const PlayerControls: React.FC<{
   recordReplayer: MultiRecordReplayer,
   outputSwitch: IconButton,
+  share: IconButton,
   modeSwitch: HTMLSelectElement,
   replayOnly: Boolean
-}> = ({ recordReplayer, outputSwitch, modeSwitch, replayOnly }) => {
+}> = ({ recordReplayer, outputSwitch, modeSwitch, replayOnly ,share}) => {
   const { data } = useSession()
   const [wasPlaying, setWasPlaying] = useState(false)
   const [value, setValue] = useState(0)
@@ -110,54 +111,61 @@ const PlayerControls: React.FC<{
         <div className={"controls_buttons_group"}>
           <Tooltip
             title={state === "paused" ? "press to start" : state === "recording" ? "press to stop recording" : "press to pause"}>
-            <IconButton
-              color={"primary"}
-              disabled={state === "paused" && !hasSource}
-              onClick={() => {
-                if (state === "paused") {
-                  recordReplayer.play()
-                } else if (state === "recording") {
-                  recordReplayer.stop()
-                } else {
-                  recordReplayer.pause()
-                }
-              }}>
+            <span>
+              <IconButton
+                color={"primary"}
+                disabled={state === "paused" && !hasSource}
+                onClick={() => {
+                  if (state === "paused") {
+                    recordReplayer.play()
+                  } else if (state === "recording") {
+                    recordReplayer.stop()
+                  } else {
+                    recordReplayer.pause()
+                  }
+                }}>
               {
                 state === "paused" ? <PlayCircleFilledOutlinedIcon sx={{ fontSize: "40px" }} />
                   : state === "recording" ? <StopCircleOutlinedIcon sx={{ fontSize: "40px" }} />
                     : <PauseCircleFilledOutlinedIcon sx={{ fontSize: "40px" }} />
               }
             </IconButton>
+            </span>
           </Tooltip>
 
           {
             replayOnly ? null :
               <Tooltip title={!(!data || state !== "paused") ? "Press to Start Recording" : ""}>
-                <IconButton
-                  color="primary"
-                  disabled={!data || state !== "paused"}
-                  onClick={() => {
-                    recordReplayer.record()
-                  }}>
-                  <RadioButtonCheckedOutlinedIcon  sx={{ fontSize: "40px" }} />
+                <span>
+                  <IconButton
+                    color="primary"
+                    disabled={!data || state !== "paused"}
+                    onClick={() => {
+                      recordReplayer.record()
+                    }}>
+                  <RadioButtonCheckedOutlinedIcon sx={{ fontSize: "40px" }} />
                 </IconButton>
+                </span>
+
               </Tooltip>
           }
 
           {
             replayOnly ? null :
               <Tooltip title={!(!hasSource || state === "recording") ? "Press to Start over" : ""}>
-                <IconButton
-                  color="primary"
-                  disabled={!hasSource || state === "recording"}
-                  onClick={() => {
-                    if (state === "playing") {
-                      recordReplayer.pause()
-                    }
-                    recordReplayer.src = undefined
-                  }}>
-                  <UndoOutlinedIcon  sx={{ fontSize: "40px" }} />
+                <span>
+                  <IconButton
+                    color="primary"
+                    disabled={!hasSource || state === "recording"}
+                    onClick={() => {
+                      if (state === "playing") {
+                        recordReplayer.pause()
+                      }
+                      recordReplayer.src = undefined
+                    }}>
+                  <UndoOutlinedIcon sx={{ fontSize: "40px" }} />
                 </IconButton>
+                </span>
               </Tooltip>
           }
 
@@ -176,6 +184,12 @@ const PlayerControls: React.FC<{
         )}
 
         <div className={"controls_buttons_group"}>
+          { replayOnly ?
+            <Tooltip title={"copy embed code"}>
+              {share}
+            </Tooltip> : null
+          }
+
           <Tooltip title={"show or hide output"}>
             {outputSwitch}
           </Tooltip>

@@ -36,10 +36,6 @@ body {
     Helvetica Neue, sans-serif;
 }
 
-body {
-  padding-top: 48px !important;
-}
-
 a {
   color: inherit;
   text-decoration: none;
@@ -148,6 +144,7 @@ a {
   -webkit-box-shadow: 0 1px 2px 0 #000000;
   background-color: rgba(255,255,255,1);
   box-shadow: 0 1px 2px 0 #000000;
+  z-index: 999;
 }
 
 .login_menu_title {
@@ -182,9 +179,23 @@ a {
   cursor: pointer;
 }
 
-.record_editor_container {
+.record_regular_container {
   width: 70%;
+  margin: 0 auto;
+}
+
+.record_embed_container {
+  width: 100%;
+}
+
+.record_editor_container {
+  width: 100%;
   margin: 50px auto 0 auto;
+}
+
+.record_editor_container_embed {
+  width: 100%;
+  margin: 0px auto 0 auto;
 }
 
 .record_editors {
@@ -232,7 +243,7 @@ a {
 }
 
 .record_controls_container {
-  width: 70%;
+  width: 100%;
   background-color: #3d4141;
   margin: 0 auto;
 }
@@ -251,7 +262,7 @@ a {
 }
 
 .record_run_container {
-  width: 70%;
+  width: 100%;
   margin: 15px auto;
   display: flex;
   flex-direction: row;
@@ -261,14 +272,14 @@ a {
 .record_title_container {
   display: flex;
   flex-direction: row;
-  width: 70%;
+  width: 100%;
   margin: 50px auto 20px auto;
   font-family: Inter-Bold, sans-serif;
   font-size: 2rem;
 }
 
 .record_metadata_container {
-  width: 70%;
+  width: 100%;
   margin: 0 auto
 }
 
@@ -276,6 +287,26 @@ a {
   width: 60%;
 }
 
+.record_chip:not(:nth-child(2)) {
+  margin-left: 10px;
+}
+
+.record_chip {
+  margin-top: 10px;
+  margin-bottom: 10px;
+}
+
+.record_form_tag_container {
+  margin: 20px auto;
+}
+
+.record_form_tag_input_container {
+  width: 60%;
+}
+
+.record_form_description_container {
+  width: 100%;
+}
 
 .record_edit_icon {
   margin-left: 10px;
@@ -299,50 +330,26 @@ a {
 
 
 .record_tag_container {
-  display: flex;
-  flex-direction: row;
-  width: 70%;
-  height: 20px;
+  width: 100%;
   margin: 0 auto 0 auto;
   font-family: Inter-Bold, sans-serif;
   font-size: 1rem;
 }
 
 
-.record_tag_input {
-  font-size: 1rem;
-  height: 20px;
-  line-height: 20px;
-  vertical-align: top;
-  padding:  0;
-}
-
-.record_tag_input input {
-  height: 20px;
-  line-height: 20px;
-  padding: 0 !important;
-  font-size: 0.8rem;
-  font-family: Inter-Bold, sans-serif;
-}
-
 .record_description_container {
-  width: 70%;
+  width: 100%;
   margin: 20px auto;
 }
 
-.record_description_title {
-  display: flex;
-  flex-direction: row;
+.record_metadata_section_title {
   font-family: Inter-Bold, sans-serif;
   font-size: 2rem;
+  margin-top: 20px;
+  margin-bottom: 20px;
 }
 
-.record_description_title div{
-  cursor: pointer;
-  margin-left: 10px;
-}
-
-.record_description_ta {
+.record_form_description_ta {
   resize: none;
   width: 100%;
   height: 50vh;

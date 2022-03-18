@@ -1,7 +1,7 @@
 import { Ace, MultiRecordReplayer } from "@codereplay/ace-recorder"
 import { TraceSummary, SessionInfo } from "@codereplay/types"
 import { Result, Submission } from "@cs124/playground-types"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { createRef, useCallback, useEffect, useRef, useState } from "react"
 import { IAceEditor } from "react-ace/lib/types"
 import { uploadTrace } from "../lib/uploader"
 import DefaultAceEditor from "./DefaultAceEditor"
@@ -9,12 +9,14 @@ import PlayerControls from "./PlayerControls"
 import { ReflexContainer, ReflexSplitter, ReflexElement, HandlerProps } from "react-reflex"
 import { useSession } from "next-auth/react"
 import { Button, Collapse, IconButton, TextField, Tooltip } from "@mui/material"
-import Alert from '@mui/material/Alert';
+import Alert from "@mui/material/Alert"
 import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined"
 import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined"
-import UploadIcon from '@mui/icons-material/Upload';
-import AddIcon from '@mui/icons-material/Add';
-import CloseIcon from '@mui/icons-material/Close';
+import UploadIcon from "@mui/icons-material/Upload"
+import AddIcon from "@mui/icons-material/Add"
+import CloseIcon from "@mui/icons-material/Close"
+import Chip from "@mui/material/Chip"
+import CodeIcon from '@mui/icons-material/Code';
 
 const PLAYGROUND_ENDPOINT = `${process.env.NEXT_PUBLIC_API_URL}/playground`
 const ILLINOIS_API_URL = `${process.env.NEXT_PUBLIC_ILLINOIS_API_URL}/playground`
@@ -33,8 +35,9 @@ const DEFAULT_FILES = {
   scala3: "Main.sc"
 } as Record<language, string>
 
-const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordReplayer.Content } | undefined }> = ({
-                                                                                                                     source
+const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordReplayer.Content } | undefined, isEmbed: boolean}> = ({
+                                                                                                                     source,
+  isEmbed=false
                                                                                                                    }) => {
   const editors = useRef<Record<string, Ace.Editor>>({})
   const aceEditorRef = useRef<IAceEditor>()
@@ -72,6 +75,9 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
 
   const replayOnly = source !== undefined
 
+  //const embedRef: React.RefObject<HTMLDivElement> = createRef()
+  const embedRef = useRef<HTMLDivElement>(null)
+
   const run = useCallback(async (runAll = false) => {
     if (!aceEditorRef.current) {
       return
@@ -81,7 +87,7 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
       return
     }
 
-    let path = DEFAULT_FILES[mode]
+    let path = active
 
     const submission = Submission.check({
       image: `cs124/playground-runner-${mode}`,
@@ -91,9 +97,14 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
 
     if (runAll) {
       let sessions = recordReplayer.current!.ace.recorders["code"].getSessionsInfo()
-      submission.filesystem = sessions.map((session: SessionInfo) => {
-        return { path: session.name, contents: session.contents }
-      })
+      if (replayOnly) {
+        sessions = recordReplayer.current!.ace.players["code"].getSessionsInfo()
+      }
+      if (sessions.length !== 0) {
+        submission.filesystem = sessions.map((session: SessionInfo) => {
+          return { path: session.name, contents: session.contents }
+        })
+      }
     }
 
     let endpoint = PLAYGROUND_ENDPOINT
@@ -127,7 +138,7 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
       .finally(() => {
         setRunning(false)
       })
-  }, [mode])
+  }, [mode, active])
 
   useEffect(() => {
     if (running) {
@@ -282,7 +293,9 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
 
 
   const [uploading, setUploading] = useState(false)
-  const upload = useCallback(async () => {
+  const upload = useCallback(async (e) => {
+    e.preventDefault()
+
     if (!recordReplayer.current || !recordReplayer.current.src) {
       return
     }
@@ -296,9 +309,9 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
 
     setUploading(true)
     uploadTrace({ trace: ace, mode }, audio, {
-      description: savedDescription.current,
-      title: savedTitle.current,
-      tag: savedTag.current
+      description: e.target.elements.description.value,
+      title: e.target.elements.title.value,
+      tag: e.target.elements.tag.value
     }).then(() => {
       setUploading(false)
       window.location.href = "/"
@@ -342,7 +355,7 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
               color="inherit"
               size="small"
               onClick={() => {
-                setDisplayTopMessage(false);
+                setDisplayTopMessage(false)
               }}
             >
               <CloseIcon fontSize="inherit" />
@@ -364,7 +377,7 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
               color="inherit"
               size="small"
               onClick={() => {
-                setDisplayTopMessage(false);
+                setDisplayTopMessage(false)
               }}
             >
               <CloseIcon fontSize="inherit" />
@@ -387,7 +400,7 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
             color="inherit"
             size="small"
             onClick={() => {
-              setDisplayTopMessage(false);
+              setDisplayTopMessage(false)
             }}
           >
             <CloseIcon fontSize="inherit" />
@@ -409,7 +422,7 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
             color="inherit"
             size="small"
             onClick={() => {
-              setDisplayTopMessage(false);
+              setDisplayTopMessage(false)
             }}
           >
             <CloseIcon fontSize="inherit" />
@@ -453,191 +466,205 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
     }
   </select>
 
+  const shareButton = <IconButton color={"primary"} onClick={() => {
+    let height = embedRef.current!.clientHeight
+    navigator.clipboard.writeText(`<iframe src="http://localhost:3000/embed/1647586181949" width="100%" height="${height}px" style="border:none; overflow: hidden" scrolling="no"> </iframe>`)
+  }}>
+    <CodeIcon sx={{ fontSize: "40px" }} />
+  </IconButton>
+
   return (
-    <div>
-      {message}
-
-
-
-      <div className={"record_editor_container"}>
-        <div className={"record_file_tab_container"}>
-          {
-            sessions.split(",").map((str, idx) => {
-              return <div className={active === str ? "record_file_tab_active record_file_tab" : "record_file_tab"}
-                          key={idx} onClick={() => setActive(str)}>{str}</div>
-            })
-          }
-
-
-
-          {
-            sessions.split(",").length < 5 && !replayOnly && !hasRecording &&
-            <Tooltip title={"Create a new file here, you can create at most 5 files"}>
-              <IconButton  sx={{ minHeight: 0, minWidth: 0, padding: 0 }} onClick={() => {
-                let startWithLower = DEFAULT_FILES[mode].split(".")[0][0] === DEFAULT_FILES[mode].split(".")[0][0].toLowerCase()
-                let fileName = startWithLower ? "another" : "Another"
-                fileName += sessions.split(",").length
-                let newSession = fileName + "." + DEFAULT_FILES[mode].split(".")[1]
-                setSessions(sessions + "," + newSession)
-                recordReplayer.current!.ace.recorders["code"].addSession({
-                  name: newSession,
-                  contents: "",
-                  mode: "ace/mode/" + mode
+    <div style={{marginTop: isEmbed ? "0" : "48px"}}>
+      {
+        !isEmbed && message
+      }
+      <div className={isEmbed ? "record_embed_container" : "record_regular_container"}>
+        <div ref={embedRef} style={{height:"auto"}}>
+          <div className={isEmbed? "record_editor_container_embed" : "record_editor_container"}>
+            <div className={"record_file_tab_container"}>
+              {
+                sessions.split(",").map((str, idx) => {
+                  return <div className={active === str ? "record_file_tab_active record_file_tab" : "record_file_tab"}
+                              key={idx} onClick={() => setActive(str)}>{str}</div>
                 })
-                setActive(newSession)
-              }}>
-                <AddIcon/>
-              </IconButton>
-            </Tooltip>
-          }
-        </div>
-
-        <ReflexContainer className={"record_editors"} orientation="horizontal"
-                         style={{ height: showOutput ? containerHeight + 5 + "px" : containerHeight + "px" }}>
-          <ReflexElement onResize={args => {
-            if (args.component.props.flex) {
-              setAceEditorHeight(args.component.props.flex)
-            }
-          }} maxSize={containerHeight} minSize={0}>
-            <DefaultAceEditor
-              height={showOutput ? aceEditorHeight * containerHeight + "px" : containerHeight + "px"}
-              maxLines={0}
-              mode={mode}
-              onLoad={(ace) => {
-                aceEditorRef.current = ace
-                editors.current["code"] = ace
-                finishInitialization()
-              }}
-            />
-          </ReflexElement>
-          <ReflexSplitter style={{
-            height: "5px",
-            backgroundColor: "black",
-            cursor: "row-resize",
-            display: showOutput ? "block" : "none"
-          }} />
-          <ReflexElement onResize={args => {
-            if (args.component.props.flex) {
-              setAceOutputHeight(args.component.props.flex)
-            }
-          }} maxSize={containerHeight} minSize={0} style={{ display: showOutput ? "block" : "none" }}>
-            <DefaultAceEditor
-              readOnly
-              height={aceOutputHeight * containerHeight + "px"}
-              showGutter={false}
-              maxLines={0}
-              showPrintMargin={false}
-              highlightActiveLine={false}
-              theme="ambiance"
-              mode={"text"}
-              onLoad={(ace) => {
-                aceOutputRef.current = ace
-                editors.current["output"] = ace
-                finishInitialization()
-
-                const renderer = ace.renderer as any
-                renderer.$cursorLayer.element.style.display = "none"
-              }}
-            />
-          </ReflexElement>
-        </ReflexContainer>
-
-        <div ref={containerResizerRef} className={"record_container_resizer"}
-             onMouseDown={recorderState === "readyToRecord" && state === "paused" ? e => {
-               let start = e.pageY
-               const clearEvents = (e: MouseEvent) => {
-                 document.removeEventListener("mouseup", clearEvents)
-                 document.removeEventListener("mousemove", resizeContainer)
-               }
-               const resizeContainer = (e: MouseEvent) => {
-                 setContainerHeight(containerHeight + e.pageY - start)
-               }
-
-               document.addEventListener("mouseup", clearEvents)
-               document.addEventListener("mousemove", resizeContainer)
-             } : () => {
-             }}>
-        </div>
-
-      </div>
-      <div className={"record_controls_container"}>
-        {showOutput ? null : <div style={{ height: "5px", width: "100%" }} />}
-        {finishedInitialization && <PlayerControls recordReplayer={recordReplayer.current!} toggleOutput={toggleOutput}
-                                                   outputSwitch={outputSwitch} modeSwitch={modeSwitch}
-                                                   replayOnly={replayOnly} />}
-      </div>
+              }
 
 
-      <div className={"record_run_container"}>
-        <Button
-          disabled={uploading || !hasRecording}
-          style={{ visibility: replayOnly ? "hidden" : "visible" }}
-          onClick={upload}
-          variant="contained"
-          endIcon={<UploadIcon/>}
-          color={"error"}>Upload</Button>
+              {
+                sessions.split(",").length < 5 && !replayOnly && !hasRecording &&
+                <Tooltip title={"Create a new file here, you can create at most 5 files"}>
+                  <IconButton sx={{ minHeight: 0, minWidth: 0, padding: 0 }} onClick={() => {
+                    let startWithLower = DEFAULT_FILES[mode].split(".")[0][0] === DEFAULT_FILES[mode].split(".")[0][0].toLowerCase()
+                    let fileName = startWithLower ? "another" : "Another"
+                    fileName += sessions.split(",").length
+                    let newSession = fileName + "." + DEFAULT_FILES[mode].split(".")[1]
+                    setSessions(sessions + "," + newSession)
+                    recordReplayer.current!.ace.recorders["code"].addSession({
+                      name: newSession,
+                      contents: "",
+                      mode: "ace/mode/" + mode
+                    })
+                    setActive(newSession)
+                  }}>
+                    <AddIcon />
+                  </IconButton>
+                </Tooltip>
+              }
+            </div>
 
+            <ReflexContainer className={"record_editors"} orientation="horizontal"
+                             style={{ height: showOutput ? containerHeight + 5 + "px" : containerHeight + "px" }}>
+              <ReflexElement onResize={args => {
+                if (args.component.props.flex) {
+                  setAceEditorHeight(args.component.props.flex)
+                }
+              }} maxSize={containerHeight} minSize={0}>
+                <DefaultAceEditor
+                  height={showOutput ? aceEditorHeight * containerHeight + "px" : containerHeight + "px"}
+                  maxLines={0}
+                  mode={mode}
+                  onLoad={(ace) => {
+                    aceEditorRef.current = ace
+                    editors.current["code"] = ace
+                    finishInitialization()
+                  }}
+                />
+              </ReflexElement>
+              <ReflexSplitter style={{
+                height: "5px",
+                backgroundColor: "black",
+                cursor: "row-resize",
+                display: showOutput ? "block" : "none"
+              }} />
+              <ReflexElement onResize={args => {
+                if (args.component.props.flex) {
+                  setAceOutputHeight(args.component.props.flex)
+                }
+              }} maxSize={containerHeight} minSize={0} style={{ display: showOutput ? "block" : "none" }}>
+                <DefaultAceEditor
+                  readOnly
+                  height={aceOutputHeight * containerHeight + "px"}
+                  showGutter={false}
+                  maxLines={0}
+                  showPrintMargin={false}
+                  highlightActiveLine={false}
+                  theme="ambiance"
+                  mode={"text"}
+                  onLoad={(ace) => {
+                    aceOutputRef.current = ace
+                    editors.current["output"] = ace
+                    finishInitialization()
 
-        <div>
-          <Button  variant="contained" onClick={() => run(true)}>Run All</Button>
-          <Button variant="contained" color="success" onClick={() => run(false)}>Run</Button>
-        </div>
+                    const renderer = ace.renderer as any
+                    renderer.$cursorLayer.element.style.display = "none"
+                  }}
+                />
+              </ReflexElement>
+            </ReflexContainer>
 
-      </div>
+            <div ref={containerResizerRef} className={"record_container_resizer"}
+                 onMouseDown={recorderState === "readyToRecord" && state === "paused" ? e => {
+                   let start = e.pageY
+                   const clearEvents = (e: MouseEvent) => {
+                     document.removeEventListener("mouseup", clearEvents)
+                     document.removeEventListener("mousemove", resizeContainer)
+                   }
+                   const resizeContainer = (e: MouseEvent) => {
+                     setContainerHeight(containerHeight + e.pageY - start)
+                   }
 
+                   document.addEventListener("mouseup", clearEvents)
+                   document.addEventListener("mousemove", resizeContainer)
+                 } : () => {
+                 }}>
+            </div>
 
-      <div className={"record_metadata_container"}>
-        <form>
-          <div className={"record_form_title_container"}>
-            <TextField label={"Title"} fullWidth required variant="outlined"/>
+          </div>
+          <div className={"record_controls_container"}>
+            {showOutput ? null : <div style={{ height: "5px", width: "100%" }} />}
+            {finishedInitialization &&
+              <PlayerControls recordReplayer={recordReplayer.current!} toggleOutput={toggleOutput}
+                              outputSwitch={outputSwitch} modeSwitch={modeSwitch} share={shareButton}
+                              replayOnly={replayOnly} />}
           </div>
 
-        </form>
+
+          <div className={"record_run_container"}>
+            <Button
+              disabled={uploading || !hasRecording}
+              style={{ visibility: replayOnly ? "hidden" : "visible" }}
+              variant="contained"
+              type={"submit"}
+              form={"meta_data_form"}
+              endIcon={<UploadIcon />}
+              color={"error"}>Upload
+            </Button>
+            <div>
+              <Button variant="contained" onClick={() => run(true)}>Run All</Button>
+              <Button variant="contained" color="success" onClick={() => run(false)}>Run</Button>
+            </div>
+          </div>
+
+        </div>
+
+
+        {
+          !replayOnly && !isEmbed &&
+          <div className={"record_metadata_container"}>
+            <form id={"meta_data_form"} onSubmit={(e) => upload(e)}>
+              <div className={"record_form_title_container"}>
+                <div className={"record_metadata_section_title"}>Title</div>
+                <TextField name="title" label={"Title"} fullWidth required variant="outlined" />
+              </div>
+              <div className={"record_form_tag_container"}>
+                <div className={"record_metadata_section_title"}>Tag</div>
+                {
+                  tag.split(",").map((t, key) => {
+                    if (t.trim() == "") return null
+                    return <Chip key={key} className={"record_chip"} label={t} />
+                  })
+                }
+              </div>
+              <div className={"record_form_tag_input_container"}>
+                {tag.split(",").length > 5 ?
+                  <TextField required error helperText={"max tag size is 5"} fullWidth value={tag} name="tag"
+                             label={"tags, separate by common"} variant="outlined"
+                             onChange={event => setTag(event.target.value)} /> :
+                  <TextField required fullWidth value={tag} name="tag" label={"tags, separate by common"}
+                             variant="outlined" onChange={event => setTag(event.target.value)} />
+                }
+              </div>
+              <div className={"record_form_description_container"}>
+                <div className={"record_metadata_section_title"}>Description</div>
+                <textarea name={"description"} required={true} className={"record_form_description_ta"} />
+              </div>
+            </form>
+          </div>
+        }
+
+
+        {
+          replayOnly && !isEmbed &&
+          <div>
+            <div className={"record_title_container"}>
+              <div className={"record_title"}>{title}</div>
+            </div>
+            <div className={"record_tag_container"}>
+              <span></span>
+              {
+                tag.split(",").map((t, key) => {
+                  return <Chip key={key} className={"record_chip"} label={t} />
+                })
+              }
+            </div>
+            <div className={"record_description_container"}>
+              <div className={"record_metadata_section_title"}>Description</div>
+              <hr />
+              <div>{description}</div>
+            </div>
+          </div>
+        }
       </div>
-
-      {
-        /**
-
-         <div className={"record_title_container"}>
-         {
-          titleEditing ?
-            <Input onChange={e => setTitle(e.target.value)} value={title} className={"record_title_input"} /> :
-            <div className={"record_title"}>{title}</div>
-        }
-         {
-          titleEditing ?
-            <div className={"record_edit_icon"} onClick={() => setTitleEditing(false)}><Icon name={"lock"} />
-            </div> : replayOnly ? null :
-              <div className={"record_edit_icon"} onClick={() => setTitleEditing(true)}><Icon name={"edit"} /></div>
-        }
-         </div>
-         <div className={"record_tag_container"}>
-         {
-          tagEditing ? <Input onChange={e => setTag(e.target.value)} value={tag} className={"record_tag_input"} /> :
-            <div className={"record_tag"}>Tag: {tag}</div>
-        }
-         {
-          tagEditing ? <div className={"record_edit_icon"} onClick={() => setTagEditing(false)}><Icon name={"lock"} />
-          </div> : replayOnly ? null :
-            <div className={"record_edit_icon"} onClick={() => setTagEditing(true)}><Icon name={"add"} /></div>
-        }
-         </div>
-
-         <div className={"record_description_container"}>
-         <div className={"record_description_title"}>Description {replayOnly ? null :
-          descriptionEditing ? <div onClick={() => setDescriptionEditing(false)}><Icon name={"lock"} /></div> :
-            <div onClick={() => setDescriptionEditing(true)}><Icon name={"write"} /></div>
-        }</div>
-         <hr />
-         {
-          descriptionEditing ? <textarea className={"record_description_ta"} value={description}
-                                         onChange={e => setDescription(e.target.value)} /> : <div>{description}</div>
-        }
-         </div>
-         **/
-      }
-
-
     </div>
   )
 }

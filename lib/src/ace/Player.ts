@@ -87,6 +87,13 @@ class AcePlayer extends (EventEmitter as new () => TypedEmitter<AcePlayerEvents>
   public get src() {
     return this._trace
   }
+
+  public getSessionsInfo() {
+    return Object.entries(this.sessionMap).map(([name, session]) => {
+      return { name, contents: session.getValue(), mode: "" }
+    })
+  }
+
   public async play() {
     if (!this._trace) {
       throw new Error("No trace loaded")
