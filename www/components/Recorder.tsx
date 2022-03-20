@@ -37,6 +37,7 @@ import SpeedIcon from '@mui/icons-material/Speed';
 import LanguageIcon from '@mui/icons-material/Language';
 import ExpandLess from '@mui/icons-material/ExpandLess';
 import ExpandMore from '@mui/icons-material/ExpandMore';
+import PlayCircleFilledIcon from '@mui/icons-material/PlayCircleFilled';
 
 const PLAYGROUND_ENDPOINT = `${process.env.NEXT_PUBLIC_API_URL}/playground`
 const ILLINOIS_API_URL = `${process.env.NEXT_PUBLIC_ILLINOIS_API_URL}/playground`
@@ -805,7 +806,15 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
                    }}>
               </div>
             }
-
+            {
+              isEmbed && <IconButton color="success" className={"controls_run"} onClick={() => {
+                if (showFiles) run(true)
+                else run(false)
+              }
+              }>
+                <PlayCircleFilledIcon sx={{ fontSize: "35px" }}/>
+              </IconButton>
+            }
           </div>
           <div className={"record_controls_container"}>
             {showOutput ? null : <div style={{ height: "5px", width: "100%" }} />}
@@ -909,7 +918,7 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
           </div>
 
 
-          <div className={"record_run_container"}>
+          <div className={"record_run_container"} style={{display: isEmbed ? "none" : "flex"}}>
             <Button
               disabled={uploading || !hasRecording}
               style={{ visibility: replayOnly ? "hidden" : "visible" }}
@@ -920,9 +929,11 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
               color={"error"}>Upload
             </Button>
             <div>
-              {showFiles ? <Button variant="contained" color="success" onClick={() => run(true)}>Run All</Button> :
-              <Button variant="contained" color="success" onClick={() => run(false)}>Run</Button>
+              <Button variant="contained" color="success" onClick={() => {
+                if (showFiles) run(true)
+                else run(false)
               }
+              }>Run{showFiles ? " All" : ""}</Button>
             </div>
           </div>
 

@@ -191,11 +191,13 @@ a {
 .record_editor_container {
   width: 100%;
   margin: 50px auto 0 auto;
+  position: relative;
 }
 
 .record_editor_container_embed {
   width: 100%;
   margin: 0px auto 0 auto;
+  position: relative;
 }
 
 .record_editors {
@@ -371,10 +373,11 @@ a {
   display: flex;
 }
 
-.controls_buttons_group select {
-  margin: 8px 16px 8px auto;
+.controls_run {
+  position: absolute !important;
+  right: 0;
+  bottom: 0;
 }
-
 
 .controls_time_string {
   display: flex;
