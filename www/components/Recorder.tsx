@@ -893,7 +893,7 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
                   )}
 
                   <div className={"controls_buttons_group"}>
-                    {replayOnly ?
+                    {replayOnly && data?.user?.email === source?.summary.email ?
                       <Tooltip title={"copy embed code"}>
                         {shareButton}
                       </Tooltip> : null
