@@ -85,7 +85,9 @@ const processUpload = async (ctx: Context) => {
         name: ctx.user?.name,
         title: metadata.title,
         tag: metadata.tag,
-        description: metadata.description
+        description: metadata.description,
+        showFiles: metadata.showFiles,
+        containerHeight: metadata.containerHeight
       })
     )
   } catch (err) {

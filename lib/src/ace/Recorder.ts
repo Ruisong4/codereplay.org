@@ -69,6 +69,7 @@ class AceRecorder extends (EventEmitter as new () => TypedEmitter<AceRecorderEve
     if (!this.recording) {
       throw new Error("Not recording")
     }
+    this.recording = false;
     this.timer && clearInterval(this.timer)
     this.streamer!.stop()
     this.src = new AceTrace([...this.records], this.sessionInfo, this.startSession)

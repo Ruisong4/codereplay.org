@@ -1,14 +1,22 @@
 import { Ace, MultiRecordReplayer } from "@codereplay/ace-recorder"
 import { TraceSummary, SessionInfo } from "@codereplay/types"
 import { Result, Submission } from "@cs124/playground-types"
-import { createRef, useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { IAceEditor } from "react-ace/lib/types"
 import { uploadTrace } from "../lib/uploader"
 import DefaultAceEditor from "./DefaultAceEditor"
-import PlayerControls from "./PlayerControls"
 import { ReflexContainer, ReflexSplitter, ReflexElement, HandlerProps } from "react-reflex"
 import { useSession } from "next-auth/react"
-import { Button, Collapse, IconButton, TextField, Tooltip } from "@mui/material"
+import {
+  Box,
+  Button,
+  ClickAwayListener,
+  Collapse, Divider,
+  IconButton, List, ListItem, ListItemButton, ListItemIcon, ListItemText,
+  Popper, Switch,
+  TextField,
+  Tooltip
+} from "@mui/material"
 import Alert from "@mui/material/Alert"
 import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined"
 import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined"
@@ -16,7 +24,19 @@ import UploadIcon from "@mui/icons-material/Upload"
 import AddIcon from "@mui/icons-material/Add"
 import CloseIcon from "@mui/icons-material/Close"
 import Chip from "@mui/material/Chip"
-import CodeIcon from '@mui/icons-material/Code';
+import CodeIcon from "@mui/icons-material/Code"
+import PlayCircleFilledOutlinedIcon from "@mui/icons-material/PlayCircleFilledOutlined"
+import StopCircleOutlinedIcon from "@mui/icons-material/StopCircleOutlined"
+import PauseCircleFilledOutlinedIcon from "@mui/icons-material/PauseCircleFilledOutlined"
+import RadioButtonCheckedOutlinedIcon from "@mui/icons-material/RadioButtonCheckedOutlined"
+import UndoOutlinedIcon from "@mui/icons-material/UndoOutlined"
+import SettingsIcon from "@mui/icons-material/Settings"
+import { grey } from "@mui/material/colors"
+import FolderIcon from '@mui/icons-material/Folder'
+import SpeedIcon from '@mui/icons-material/Speed';
+import LanguageIcon from '@mui/icons-material/Language';
+import ExpandLess from '@mui/icons-material/ExpandLess';
+import ExpandMore from '@mui/icons-material/ExpandMore';
 
 const PLAYGROUND_ENDPOINT = `${process.env.NEXT_PUBLIC_API_URL}/playground`
 const ILLINOIS_API_URL = `${process.env.NEXT_PUBLIC_ILLINOIS_API_URL}/playground`
@@ -35,10 +55,10 @@ const DEFAULT_FILES = {
   scala3: "Main.sc"
 } as Record<language, string>
 
-const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordReplayer.Content } | undefined, isEmbed: boolean}> = ({
-                                                                                                                     source,
-  isEmbed=false
-                                                                                                                   }) => {
+const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordReplayer.Content } | undefined, isEmbed: boolean }> = ({
+                                                                                                                                       source,
+                                                                                                                                       isEmbed = false
+                                                                                                                                     }) => {
   const editors = useRef<Record<string, Ace.Editor>>({})
   const aceEditorRef = useRef<IAceEditor>()
   const aceOutputRef = useRef<IAceEditor>()
@@ -55,23 +75,43 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
   const [running, setRunning] = useState(false)
   const [result, setResult] = useState<{ result?: Result; error?: string } | undefined>()
 
-  const [containerHeight, setContainerHeight] = useState(200)
+  const [containerHeight, setContainerHeight] = useState(300)
   const [aceEditorHeight, setAceEditorHeight] = useState(1 / 2)
   const [aceOutputHeight, setAceOutputHeight] = useState(1 / 2)
 
+
+  const [showFiles, setShowFiles] = useState<boolean>(false)
   const [active, setActive] = useState<string>("main.py")
   const [sessions, setSessions] = useState<string>("main.py")
 
   const [title, setTitle] = useState<string>(data ? data.user?.name + "'s Coding Example" : "")
-  const [titleEditing, setTitleEditing] = useState<boolean>(false)
 
   const [displayTopMessage, setDisplayTopMessage] = useState<boolean>(true)
 
   const [description, setDescription] = useState<string>(data ? "this is a coding example recorded by " + data.user?.name : "")
-  const [descriptionEditing, setDescriptionEditing] = useState<boolean>(false)
+
+  const [languageMenuOpen, setLanguageMenuOpen] = useState<boolean>(false)
+
+  const [playbackMenuOpen, setPlaybackMenuOpen] = useState<boolean>(false)
+
+  const [settingMenuOpen, setSettingMenuOpen] = useState<boolean>(false)
+  const [settingMenuAnchor, setSettingMenuAnchor] = useState<null | HTMLElement>(null)
 
   const [tag, setTag] = useState<string>(mode)
-  const [tagEditing, setTagEditing] = useState<boolean>(false)
+
+  const [wasPlaying, setWasPlaying] = useState(false)
+  const [value, setValue] = useState(0)
+  const [hasSource, setHasSource] = useState(false)
+  const [duration, setDuration] = useState(-1.0)
+
+  const [, setTick] = useState(true)
+  const recordStartTime = useRef(0)
+
+  const [playbackRate, setPlaybackRate] = useState("1.0")
+  useEffect(() => {
+    if (recordReplayer.current)
+      recordReplayer.current.playbackRate = parseFloat(playbackRate)
+  }, [playbackRate, recordReplayer.current])
 
   const replayOnly = source !== undefined
 
@@ -168,6 +208,11 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
     savedShowOutput.current = showOutput
   }, [showOutput])
 
+  const savedShowFiles = useRef(showFiles)
+  useEffect(() => {
+    savedShowFiles.current = showFiles
+  }, [showFiles])
+
   const savedContainerHeight = useRef(containerHeight)
   useEffect(() => {
     savedContainerHeight.current = containerHeight
@@ -189,6 +234,30 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
     savedTag.current = tag
   }, [tag])
 
+  useEffect(() => {
+    if (state !== "recording" && state !== "playing") {
+      return
+    }
+
+    if (!recordReplayer.current) {
+      return
+    }
+
+    if (recordReplayer.current.duration) {
+      setDuration(recordReplayer.current.duration)
+    }
+
+    recordStartTime.current = Date.now()
+    setTick((t) => !t)
+    const timer = setInterval(() => {
+      setTick((t) => !t)
+    }, 128)
+    return () => {
+      recordStartTime.current = 0
+      clearInterval(timer)
+      setTick((t) => !t)
+    }
+  }, [state])
 
   const [finishedInitialization, setFinishedInitialization] = useState(false)
 
@@ -213,6 +282,8 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
     setActive(source!.trace.ace.code.sessionName)
     setTitle(source!.summary.title)
     setTag(source!.summary.tag)
+    setShowFiles(source!.summary.showFiles)
+    setContainerHeight(source!.summary.containerHeight)
     console.log(source)
   }
 
@@ -256,7 +327,18 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
         }
       }
     })
+
+
     recordReplayer.current.addStateListener((s) => setState(s))
+
+    recordReplayer.current.addEventListener((e) => {
+      if (e === "ended") {
+        setValue(0)
+      } else if (e === "srcChanged") {
+        setHasSource(recordReplayer.current.src !== undefined)
+      }
+    })
+
     recordReplayer.current.addEventListener((e) => {
       if (!recordReplayer.current) {
         return
@@ -292,10 +374,28 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
   }, [recordReplayer.current])
 
 
+  const timer = useRef<ReturnType<typeof setInterval>>()
+  useEffect(() => {
+    if (state === "playing") {
+      timer.current = setInterval(() => {
+        setValue(recordReplayer.current.percent)
+      }, 100)
+    } else {
+      timer.current && clearInterval(timer.current)
+    }
+  }, [state, recordReplayer.current])
+
+  const handleChange = useCallback(
+    (event) => {
+      recordReplayer.current.percent = event.target.value
+      setValue(event.target.value)
+    },
+    [recordReplayer.current]
+  )
+
   const [uploading, setUploading] = useState(false)
   const upload = useCallback(async (e) => {
     e.preventDefault()
-
     if (!recordReplayer.current || !recordReplayer.current.src) {
       return
     }
@@ -311,7 +411,9 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
     uploadTrace({ trace: ace, mode }, audio, {
       description: e.target.elements.description.value,
       title: e.target.elements.title.value,
-      tag: e.target.elements.tag.value
+      tag: e.target.elements.tag.value,
+      containerHeight: savedContainerHeight.current,
+      showFiles: savedShowFiles.current
     }).then(() => {
       setUploading(false)
       window.location.href = "/"
@@ -440,31 +542,22 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
   useEffect(() => {
     setDisplayTopMessage(true)
   }, [recorderState, data])
-  /**
-   * two buttons that will be passed into player control
-   * **/
+
+
   const outputSwitch = <IconButton color={"primary"} onClick={toggleOutput}>{
     showOutput ? <VisibilityOffOutlinedIcon sx={{ fontSize: "40px" }} /> :
       <VisibilityOutlinedIcon sx={{ fontSize: "40px" }} />
   }</IconButton>
-  const modeSwitch = <select disabled={!(recorderState === "readyToRecord" && state === "paused")} onChange={e => {
-    recordReplayer.current!.ace.recorders["code"].clearSessions()
-    setMode((e as React.ChangeEvent<HTMLSelectElement>).target.value as language)
-    let firstSessionName = DEFAULT_FILES[(e as React.ChangeEvent<HTMLSelectElement>).target.value as language]
-    setSessions(firstSessionName)
-    recordReplayer.current.ace.recorders["code"].addSession({
-      name: firstSessionName,
-      contents: "",
-      mode: "ace/mode/python"
-    })
-    recordReplayer.current.ace.recorders["code"].setSession(firstSessionName)
-    setActive(firstSessionName)
-  }}>
-    {recorderState === "playingTrace" ?
-      <option value={source?.summary.mode}>{source?.summary.mode}</option>
-      : Object.keys(DEFAULT_FILES).map(ele => <option key={ele} value={ele}>{ele}</option>)
-    }
-  </select>
+
+  const settingButton = <IconButton color={"primary"} onClick={(e) => {
+    setSettingMenuAnchor(e.currentTarget)
+    console.log(settingMenuAnchor)
+    setSettingMenuOpen(true)
+  }
+  }>{
+    <SettingsIcon sx={{ fontSize: "40px" }} />
+  }</IconButton>
+
 
   const shareButton = <IconButton color={"primary"} onClick={() => {
     let height = embedRef.current!.clientHeight
@@ -473,15 +566,147 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
     <CodeIcon sx={{ fontSize: "40px" }} />
   </IconButton>
 
+  const languageMenu = <Collapse
+    timeout="auto"
+    in={languageMenuOpen}
+    unmountOnExit
+  >
+    <List sx={{maxHeight: 100, overflow: "auto"}} component="div" disablePadding>
+    {
+      Object.keys(DEFAULT_FILES).map((language, index) => {
+        return <ListItemButton
+          key={language}
+          selected={mode === language}
+          onClick={e => {
+            recordReplayer.current!.ace.recorders["code"].clearSessions()
+            setMode(language as language)
+            let firstSessionName = DEFAULT_FILES[language as language]
+            setSessions(firstSessionName)
+            recordReplayer.current.ace.recorders["code"].addSession({
+              name: firstSessionName,
+              contents: "",
+              mode: "ace/mode/python"
+            })
+            recordReplayer.current.ace.recorders["code"].setSession(firstSessionName)
+            setActive(firstSessionName)
+            setLanguageMenuOpen(false)
+          }
+          }
+        >
+          {language}
+        </ListItemButton>
+      })
+    }
+    </List>
+  </Collapse>
+
+  const playbackMenu = <Collapse
+    timeout="auto"
+    in={playbackMenuOpen}
+    unmountOnExit
+  >
+    <List sx={{maxHeight: 100, overflow: "auto"}} component="div" disablePadding>
+      {
+        ["0.5", "1.0", "2.0"].map((speed, index) => {
+          return <ListItemButton
+            key={speed}
+            selected={playbackRate === speed}
+            onClick={e => {
+              setPlaybackRate(speed)
+              setPlaybackMenuOpen(false)
+            }
+            }
+          >
+            {speed}
+          </ListItemButton>
+        })
+      }
+    </List>
+  </Collapse>
+
+  const settingMenu = !settingMenuOpen ? null :
+    <ClickAwayListener onClickAway={() => {
+      setLanguageMenuOpen(false)
+      setPlaybackMenuOpen(false)
+      setSettingMenuOpen(false)
+      setSettingMenuAnchor(null)
+    }
+    }>
+      <Popper
+        id="settingMenu"
+        placement="top-end"
+        anchorEl={settingMenuAnchor}
+        open={settingMenuOpen}>
+        <Box sx={{...menuColor}}>
+          <List dense sx={{...menuColor, p:0}}>
+            <ListItem disabled={replayOnly || !(recorderState === "readyToRecord" && state === "paused")}>
+              <ListItemIcon><FolderIcon sx={{...menuColor}}/></ListItemIcon>
+              <ListItemText primary="Show File Structure"/>
+              <Switch checked={showFiles} onChange={() => setShowFiles(!showFiles)} disabled={replayOnly || !(recorderState === "readyToRecord" && state === "paused")} sx={{...menuColor}} color="warning" edge={"end"}/>
+            </ListItem>
+            <Divider sx={{bgcolor:grey[50]}}/>
+            <ListItem onClick={e => {
+                if (!(recorderState === "readyToRecord" && state === "paused")) return
+                if(playbackMenuOpen) {
+                  setPlaybackMenuOpen(false)
+                }
+                setLanguageMenuOpen(!languageMenuOpen)
+              }
+            } style={{cursor:"pointer"}} disabled={!(recorderState === "readyToRecord" && state === "paused")}>
+              <ListItemIcon><LanguageIcon sx={{...menuColor}}/></ListItemIcon>
+              <ListItemText primary={mode}/>
+              {languageMenuOpen ? <ExpandLess /> : <ExpandMore />}
+            </ListItem>
+            {languageMenu}
+            <Divider sx={{bgcolor:grey[50]}}/>
+            <ListItem style={{cursor:"pointer"}} onClick={e => {
+              if (languageMenuOpen) {
+                setLanguageMenuOpen(false)
+              }
+              setPlaybackMenuOpen(!playbackMenuOpen)
+            }}>
+              <ListItemIcon><SpeedIcon sx={{...menuColor}}/></ListItemIcon>
+              <ListItemText primary={"Playback Speed " + playbackRate}/>
+              {playbackMenuOpen ? <ExpandLess /> : <ExpandMore />}
+            </ListItem>
+            {playbackMenu}
+          </List>
+        </Box>
+      </Popper>
+    </ClickAwayListener>
+
+
+
+  const recordingSlider = <input
+    disabled={state === "recording" || !hasSource || duration===-1}
+    type="range"
+    min="0"
+    max="100"
+    step="1"
+    onChange={handleChange}
+    onMouseDown={() => {
+      if (state === "playing" && !wasPlaying) {
+        setWasPlaying(true)
+        recordReplayer.current.pause()
+      }
+    }}
+    onMouseUp={() => {
+      wasPlaying && recordReplayer.current.play()
+      setWasPlaying(false)
+    }}
+    value={value}
+  />
+
+
   return (
-    <div style={{marginTop: isEmbed ? "0" : "48px"}}>
+    <div style={{ marginTop: isEmbed ? "0" : "48px" }}>
       {
         !isEmbed && message
       }
       <div className={isEmbed ? "record_embed_container" : "record_regular_container"}>
-        <div ref={embedRef} style={{height:"auto"}}>
-          <div className={isEmbed? "record_editor_container_embed" : "record_editor_container"}>
-            <div className={"record_file_tab_container"}>
+        <div ref={embedRef} style={{ height: "auto" }}>
+          <div className={isEmbed ? "record_editor_container_embed" : "record_editor_container"}>
+            <div style={!showFiles && replayOnly ? {display: "none"} : !showFiles ? {visibility: "hidden"} : {}} className={"record_file_tab_container"}>
               {
                 sessions.split(",").map((str, idx) => {
                   return <div className={active === str ? "record_file_tab_active record_file_tab" : "record_file_tab"}
@@ -562,30 +787,129 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
               </ReflexElement>
             </ReflexContainer>
 
-            <div ref={containerResizerRef} className={"record_container_resizer"}
-                 onMouseDown={recorderState === "readyToRecord" && state === "paused" ? e => {
-                   let start = e.pageY
-                   const clearEvents = (e: MouseEvent) => {
-                     document.removeEventListener("mouseup", clearEvents)
-                     document.removeEventListener("mousemove", resizeContainer)
-                   }
-                   const resizeContainer = (e: MouseEvent) => {
-                     setContainerHeight(containerHeight + e.pageY - start)
-                   }
+            {
+              !replayOnly &&
+              <div ref={containerResizerRef} className={"record_container_resizer"}
+                   onMouseDown={recorderState === "readyToRecord" && state === "paused" ? e => {
+                     let start = e.pageY
+                     const clearEvents = (e: MouseEvent) => {
+                       document.removeEventListener("mouseup", clearEvents)
+                       document.removeEventListener("mousemove", resizeContainer)
+                     }
+                     const resizeContainer = (e: MouseEvent) => {
+                       if (containerHeight + e.pageY - start < 250) {
+                         return
+                       }
+                       setContainerHeight(containerHeight + e.pageY - start)
+                     }
 
-                   document.addEventListener("mouseup", clearEvents)
-                   document.addEventListener("mousemove", resizeContainer)
-                 } : () => {
-                 }}>
-            </div>
+                     document.addEventListener("mouseup", clearEvents)
+                     document.addEventListener("mousemove", resizeContainer)
+                   } : () => {
+                   }}>
+              </div>
+            }
 
           </div>
           <div className={"record_controls_container"}>
             {showOutput ? null : <div style={{ height: "5px", width: "100%" }} />}
             {finishedInitialization &&
-              <PlayerControls recordReplayer={recordReplayer.current!} toggleOutput={toggleOutput}
-                              outputSwitch={outputSwitch} modeSwitch={modeSwitch} share={shareButton}
-                              replayOnly={replayOnly} />}
+              <div>
+                <div className={"controls_buttons_container"}>
+
+                  <div className={"controls_buttons_group"}>
+                    <Tooltip
+                      title={state === "paused" ? "press to start" : state === "recording" ? "press to stop recording" : "press to pause"}>
+                      <span>
+                        <IconButton
+                          color={"primary"}
+                          disabled={state === "paused" && !hasSource}
+                          onClick={() => {
+                            if (state === "paused") {
+                              recordReplayer.current.play()
+                            } else if (state === "recording") {
+                              recordReplayer.current.stop()
+                            } else {
+                              recordReplayer.current.pause()
+                            }
+                          }}>
+                        {
+                          state === "paused" ? <PlayCircleFilledOutlinedIcon sx={{ fontSize: "40px" }} />
+                            : state === "recording" ? <StopCircleOutlinedIcon sx={{ fontSize: "40px" }} />
+                              : <PauseCircleFilledOutlinedIcon sx={{ fontSize: "40px" }} />
+                        }
+                      </IconButton>
+                      </span>
+                    </Tooltip>
+
+                    {
+                      replayOnly || hasSource || state === "recording" ? null :
+                        <Tooltip title={!(!data || state !== "paused") ? "Press to Start Recording" : ""}>
+                          <span>
+                            <IconButton color="primary"
+                                        disabled={!data || state !== "paused"}
+                                        onClick={() => {
+                                          recordReplayer.current.record()
+                                        }}>
+                            <RadioButtonCheckedOutlinedIcon sx={{ fontSize: "40px" }} />
+                          </IconButton>
+                          </span>
+                        </Tooltip>
+                    }
+
+                    {
+                      replayOnly || (!hasSource && state != "recording") ? null :
+                        <Tooltip title={!(!hasSource || state === "recording") ? "Press to Start over" : ""}>
+                            <span>
+                              <IconButton
+                                color="primary"
+                                disabled={!hasSource || state === "recording"}
+                                onClick={() => {
+                                  if (state === "playing") {
+                                    recordReplayer.current.pause()
+                                  }
+                                  recordReplayer.current.src = undefined
+                                  setValue(0)
+                                }}>
+                                <UndoOutlinedIcon sx={{ fontSize: "40px" }} />
+                              </IconButton>
+                            </span>
+                        </Tooltip>
+                    }
+
+                  </div>
+
+                  {recordingSlider}
+                  {state === "recording" && recordStartTime.current != 0 && (
+                    <div className={"controls_time_string"}>
+                      {msToTime(Math.floor((Date.now() - recordStartTime.current)))}
+                    </div>
+                  )}
+
+                  {state != "recording" && ((state === "playing" && duration != -1) || value !== 0) && (
+                    <div className={"controls_time_string"}>
+                      -{msToTime(duration * 1000 - Math.floor(recordReplayer.current.currentTime * 1000))}
+                    </div>
+                  )}
+
+                  <div className={"controls_buttons_group"}>
+                    {replayOnly ?
+                      <Tooltip title={"copy embed code"}>
+                        {shareButton}
+                      </Tooltip> : null
+                    }
+
+                    <Tooltip title={"show or hide output"}>
+                      {outputSwitch}
+                    </Tooltip>
+                    {
+                      settingButton
+                    }
+                  </div>
+                </div>
+              </div>
+
+            }
           </div>
 
 
@@ -600,8 +924,9 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
               color={"error"}>Upload
             </Button>
             <div>
-              <Button variant="contained" onClick={() => run(true)}>Run All</Button>
+              {showFiles ? <Button variant="contained" color="success" onClick={() => run(true)}>Run All</Button> :
               <Button variant="contained" color="success" onClick={() => run(false)}>Run</Button>
+              }
             </div>
           </div>
 
@@ -665,7 +990,25 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
           </div>
         }
       </div>
+      {settingMenu}
     </div>
   )
 }
 export default Recorder
+
+function msToTime(duration: number) {
+  let seconds = Math.floor((duration / 1000) % 60),
+    minutes = Math.floor((duration / (1000 * 60)) % 60),
+    hours = Math.floor((duration / (1000 * 60 * 60)) % 24)
+
+  let hoursStr = (hours < 10) ? "0" + hours : hours.toString(),
+    minutesStr = (minutes < 10) ? "0" + minutes : minutes.toString(),
+    secondsStr = (seconds < 10) ? "0" + seconds : seconds.toString()
+
+  return minutesStr + ":" + secondsStr
+}
+
+const menuColor = {
+  bgcolor: grey[800],
+  color: grey[50]
+}
