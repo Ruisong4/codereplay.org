@@ -80,7 +80,6 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
   const [aceEditorHeight, setAceEditorHeight] = useState(1 / 2)
   const [aceOutputHeight, setAceOutputHeight] = useState(1 / 2)
 
-
   const [showFiles, setShowFiles] = useState<boolean>(false)
   const [active, setActive] = useState<string>("main.py")
   const [sessions, setSessions] = useState<string>("main.py")
@@ -113,6 +112,28 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
     if (recordReplayer.current)
       recordReplayer.current.playbackRate = parseFloat(playbackRate)
   }, [playbackRate, recordReplayer.current])
+
+
+  useEffect(() => {
+    let handleDown = (e) => {
+      if (e.key === 'r' && e.ctrlKey) {
+        e.preventDefault()
+        if (data && state === "paused" && recordReplayer.current && !replayOnly) {
+          recordReplayer.current.record();
+        }
+      } else if (e.key === 'Enter' && e.ctrlKey) {
+        e.preventDefault()
+        if (showFiles) run(true)
+        else run(false)
+      }
+    }
+
+    document.addEventListener("keydown", handleDown)
+
+    return () => {
+      document.removeEventListener("keydown", handleDown)
+    }
+  }, [showFiles, data, state])
 
   const replayOnly = source !== undefined
 
