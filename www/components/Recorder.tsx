@@ -545,8 +545,8 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
 
 
   const outputSwitch = <IconButton color={"primary"} onClick={toggleOutput}>{
-    showOutput ? <VisibilityOffOutlinedIcon sx={{ fontSize: "40px" }} /> :
-      <VisibilityOutlinedIcon sx={{ fontSize: "40px" }} />
+    showOutput ? <VisibilityOffOutlinedIcon sx={{ fontSize: "35px" }} /> :
+      <VisibilityOutlinedIcon sx={{ fontSize: "35px" }} />
   }</IconButton>
 
   const settingButton = <IconButton color={"primary"} onClick={(e) => {
@@ -555,7 +555,7 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
     setSettingMenuOpen(true)
   }
   }>{
-    <SettingsIcon sx={{ fontSize: "40px" }} />
+    <SettingsIcon sx={{ fontSize: "35px" }} />
   }</IconButton>
 
 
@@ -563,7 +563,7 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
     let height = embedRef.current!.clientHeight
     navigator.clipboard.writeText(`<iframe src="http://localhost:3000/embed/${source!.summary.fileRoot}" width="100%" height="${height}px" style="border:none; overflow: hidden" scrolling="no"> </iframe>`)
   }}>
-    <CodeIcon sx={{ fontSize: "40px" }} />
+    <CodeIcon sx={{ fontSize: "35px" }} />
   </IconButton>
 
   const languageMenu = <Collapse
@@ -834,9 +834,9 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
                             }
                           }}>
                         {
-                          state === "paused" ? <PlayCircleFilledOutlinedIcon sx={{ fontSize: "40px" }} />
-                            : state === "recording" ? <StopCircleOutlinedIcon sx={{ fontSize: "40px" }} />
-                              : <PauseCircleFilledOutlinedIcon sx={{ fontSize: "40px" }} />
+                          state === "paused" ? <PlayCircleFilledOutlinedIcon sx={{ fontSize: "35px" }} />
+                            : state === "recording" ? <StopCircleOutlinedIcon sx={{ fontSize: "35px" }} />
+                              : <PauseCircleFilledOutlinedIcon sx={{ fontSize: "35px" }} />
                         }
                       </IconButton>
                       </span>
@@ -851,7 +851,7 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
                                         onClick={() => {
                                           recordReplayer.current.record()
                                         }}>
-                            <RadioButtonCheckedOutlinedIcon sx={{ fontSize: "40px" }} />
+                            <RadioButtonCheckedOutlinedIcon sx={{ fontSize: "35px" }} />
                           </IconButton>
                           </span>
                         </Tooltip>
@@ -871,7 +871,7 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
                                   recordReplayer.current.src = undefined
                                   setValue(0)
                                 }}>
-                                <UndoOutlinedIcon sx={{ fontSize: "40px" }} />
+                                <UndoOutlinedIcon sx={{ fontSize: "35px" }} />
                               </IconButton>
                             </span>
                         </Tooltip>
