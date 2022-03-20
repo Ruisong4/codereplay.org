@@ -561,7 +561,7 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
 
   const shareButton = <IconButton color={"primary"} onClick={() => {
     let height = embedRef.current!.clientHeight
-    navigator.clipboard.writeText(`<iframe src="http://localhost:3000/embed/1647586181949" width="100%" height="${height}px" style="border:none; overflow: hidden" scrolling="no"> </iframe>`)
+    navigator.clipboard.writeText(`<iframe src="http://localhost:3000/embed/${source!.summary.fileRoot}" width="100%" height="${height}px" style="border:none; overflow: hidden" scrolling="no"> </iframe>`)
   }}>
     <CodeIcon sx={{ fontSize: "40px" }} />
   </IconButton>
