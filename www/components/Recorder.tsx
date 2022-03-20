@@ -312,10 +312,6 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
           filtered = false
         }
 
-        if (r.external.containerHeight !== undefined) {
-          setContainerHeight(r.external.containerHeight)
-          filtered = false
-        }
         return filtered || record.type === "complete"
       }
     })
