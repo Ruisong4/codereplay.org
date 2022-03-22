@@ -58,7 +58,7 @@ export const Complete = RuntypeRecord({
   Partial({
     sessionName: String,
     external: Dictionary(Unknown),
-    sessionInfo: Array(SessionInfo)
+    sessionInfo: Array(SessionInfo),
   })
 )
 export type Complete = Static<typeof Complete>
@@ -133,8 +133,6 @@ export const WindowSizeChange = RuntypeRecord({
   rows: Number,
 })
 export type WindowSizeChange = Static<typeof WindowSizeChange>
-
-
 
 export const ExternalChange = RuntypeRecord({
   type: Literal("external"),
