@@ -369,17 +369,22 @@ a {
   margin: 0 auto;
 }
 
-.controls_buttons_group {
-  display: flex;
-}
 
 .controls_run {
   position: absolute !important;
   right: 0;
-  bottom: 0;
+  bottom: 8px;
 }
 
 .controls_time_string {
   display: flex;
   color: #e8f0fe;
+}
+
+.controls_buttons_container  span button:disabled {
+  color: #949393 !important;
+}
+
+.controls_buttons_container  button:disabled {
+  color: #949393 !important;
 }

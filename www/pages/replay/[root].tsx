@@ -40,7 +40,7 @@ const ReplayHome: NextPage = () => {
     <>
       <LoginButton/>
       {
-        source === undefined ? null : <Recorder source={source}/>
+        source === undefined ? null : <Recorder source={source} isEmbed={false}/>
       }
     </>
   )

@@ -11,10 +11,10 @@ import {
   Box,
   Button,
   ClickAwayListener,
-  Collapse, Divider,
+  Collapse, createTheme, Divider,
   IconButton, List, ListItem, ListItemButton, ListItemIcon, ListItemText,
-  Popper, Switch,
-  TextField,
+  Popper, Slider, Switch,
+  TextField, ThemeProvider,
   Tooltip
 } from "@mui/material"
 import Alert from "@mui/material/Alert"
@@ -38,6 +38,29 @@ import LanguageIcon from '@mui/icons-material/Language';
 import ExpandLess from '@mui/icons-material/ExpandLess';
 import ExpandMore from '@mui/icons-material/ExpandMore';
 import PlayCircleFilledIcon from '@mui/icons-material/PlayCircleFilled';
+
+
+const buttonTheme = createTheme({
+  components: {
+    MuiIconButton : {
+      styleOverrides: {
+        root: {
+          color: grey[100],
+        },
+        disabled: {
+          color: grey[700]
+        }
+      }
+    },
+    MuiButtonBase: {
+      styleOverrides: {
+        disabled: {
+          color: grey[700]
+        }
+      }
+    }
+  }
+})
 
 const PLAYGROUND_ENDPOINT = `${process.env.NEXT_PUBLIC_API_URL}/playground`
 const ILLINOIS_API_URL = `${process.env.NEXT_PUBLIC_ILLINOIS_API_URL}/playground`
@@ -470,7 +493,7 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
       message = <Collapse in={displayTopMessage}>
         <Alert
           action={
-            <IconButton
+            <IconButton sx={{p: "4px"}}
               aria-label="close"
               color="inherit"
               size="small"
@@ -492,7 +515,7 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
       message = <Collapse in={displayTopMessage}>
         <Alert
           action={
-            <IconButton
+            <IconButton sx={{p: "4px"}}
               aria-label="close"
               color="inherit"
               size="small"
@@ -515,7 +538,7 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
     message = <Collapse in={displayTopMessage}>
       <Alert
         action={
-          <IconButton
+          <IconButton sx={{p: "4px"}}
             aria-label="close"
             color="inherit"
             size="small"
@@ -537,7 +560,7 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
     message = <Collapse in={displayTopMessage}>
       <Alert
         action={
-          <IconButton
+          <IconButton sx={{p: "4px"}}
             aria-label="close"
             color="inherit"
             size="small"
@@ -562,26 +585,26 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
   }, [recorderState, data])
 
 
-  const outputSwitch = <IconButton color={"primary"} onClick={toggleOutput}>{
-    showOutput ? <VisibilityOffOutlinedIcon sx={{ fontSize: "35px" }} /> :
-      <VisibilityOutlinedIcon sx={{ fontSize: "35px" }} />
+  const outputSwitch = <IconButton sx={{p: "4px"}} color={"primary"} onClick={toggleOutput}>{
+    showOutput ? <VisibilityOffOutlinedIcon sx={{ fontSize: "20px" }} /> :
+      <VisibilityOutlinedIcon sx={{ fontSize: "20px" }} />
   }</IconButton>
 
-  const settingButton = <IconButton color={"primary"} onClick={(e) => {
+  const settingButton = <IconButton sx={{p: "4px"}} color={"primary"} onClick={(e) => {
     setSettingMenuAnchor(e.currentTarget)
     console.log(settingMenuAnchor)
     setSettingMenuOpen(true)
   }
   }>{
-    <SettingsIcon sx={{ fontSize: "35px" }} />
+    <SettingsIcon sx={{ fontSize: "20px" }} />
   }</IconButton>
 
 
-  const shareButton = <IconButton color={"primary"} onClick={() => {
+  const shareButton = <IconButton sx={{p: "4px"}} color={"primary"} onClick={() => {
     let height = embedRef.current!.clientHeight
     navigator.clipboard.writeText(`<iframe src="http://localhost:3000/embed/${source!.summary.fileRoot}" width="100%" height="${height}px" style="border:none; overflow: hidden" scrolling="no"> </iframe>`)
   }}>
-    <CodeIcon sx={{ fontSize: "35px" }} />
+    <CodeIcon sx={{ fontSize: "20px" }} />
   </IconButton>
 
   const languageMenu = <Collapse
@@ -695,12 +718,13 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
 
 
 
-  const recordingSlider = <input
+  const recordingSlider = <Slider
+    sx={{p: 0, ml: 2, mr: 2}}
     disabled={state === "recording" || !hasSource || duration===-1}
-    type="range"
-    min="0"
-    max="100"
-    step="1"
+    min={0}
+    max={100}
+    step={1}
+    size={"small"}
     onChange={handleChange}
     onMouseDown={() => {
       if (state === "playing" && !wasPlaying) {
@@ -828,41 +852,41 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
               </div>
             }
             {
-              isEmbed && <IconButton color="success" className={"controls_run"} onClick={() => {
+              <IconButton sx={{p: "4px"}} color="success" className={"controls_run"} onClick={() => {
                 if (showFiles) run(true)
                 else run(false)
               }
               }>
-                <PlayCircleFilledIcon sx={{ fontSize: "35px" }}/>
+                <PlayCircleFilledIcon sx={{ fontSize: "20px" }}/>
               </IconButton>
             }
           </div>
-          <div className={"record_controls_container"}>
-            {showOutput ? null : <div style={{ height: "5px", width: "100%" }} />}
-            {finishedInitialization &&
-              <div>
-                <div className={"controls_buttons_container"}>
+          <ThemeProvider theme={buttonTheme}>
+            <div className={"record_controls_container"}>
+              {showOutput ? null : <div style={{ height: "5px", width: "100%" }} />}
+              {finishedInitialization &&
+                <div>
+                  <div className={"controls_buttons_container"}>
 
-                  <div className={"controls_buttons_group"}>
                     <Tooltip
                       title={state === "paused" ? "press to start" : state === "recording" ? "press to stop recording" : "press to pause"}>
                       <span>
-                        <IconButton
-                          color={"primary"}
-                          disabled={state === "paused" && !hasSource}
-                          onClick={() => {
-                            if (state === "paused") {
-                              recordReplayer.current.play()
-                            } else if (state === "recording") {
-                              recordReplayer.current.stop()
-                            } else {
-                              recordReplayer.current.pause()
-                            }
-                          }}>
+                        <IconButton sx={{p: "4px"}}
+                                    color={"primary"}
+                                    disabled={state === "paused" && !hasSource}
+                                    onClick={() => {
+                                      if (state === "paused") {
+                                        recordReplayer.current.play()
+                                      } else if (state === "recording") {
+                                        recordReplayer.current.stop()
+                                      } else {
+                                        recordReplayer.current.pause()
+                                      }
+                                    }}>
                         {
-                          state === "paused" ? <PlayCircleFilledOutlinedIcon sx={{ fontSize: "35px" }} />
-                            : state === "recording" ? <StopCircleOutlinedIcon sx={{ fontSize: "35px" }} />
-                              : <PauseCircleFilledOutlinedIcon sx={{ fontSize: "35px" }} />
+                          state === "paused" ? <PlayCircleFilledOutlinedIcon sx={{ fontSize: "20px" }} />
+                            : state === "recording" ? <StopCircleOutlinedIcon sx={{ fontSize: "20px" }} />
+                              : <PauseCircleFilledOutlinedIcon sx={{ fontSize: "20px" }} />
                         }
                       </IconButton>
                       </span>
@@ -872,12 +896,12 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
                       replayOnly || hasSource || state === "recording" ? null :
                         <Tooltip title={!(!data || state !== "paused") ? "Press to Start Recording" : ""}>
                           <span>
-                            <IconButton color="primary"
+                            <IconButton sx={{p: "4px"}} color="primary"
                                         disabled={!data || state !== "paused"}
                                         onClick={() => {
                                           recordReplayer.current.record()
                                         }}>
-                            <RadioButtonCheckedOutlinedIcon sx={{ fontSize: "35px" }} />
+                            <RadioButtonCheckedOutlinedIcon sx={{ fontSize: "20px" }} />
                           </IconButton>
                           </span>
                         </Tooltip>
@@ -887,38 +911,35 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
                       replayOnly || (!hasSource && state != "recording") ? null :
                         <Tooltip title={!(!hasSource || state === "recording") ? "Press to Start over" : ""}>
                             <span>
-                              <IconButton
-                                color="primary"
-                                disabled={!hasSource || state === "recording"}
-                                onClick={() => {
-                                  if (state === "playing") {
-                                    recordReplayer.current.pause()
-                                  }
-                                  recordReplayer.current.src = undefined
-                                  setValue(0)
-                                }}>
-                                <UndoOutlinedIcon sx={{ fontSize: "35px" }} />
+                              <IconButton sx={{p: "4px"}}
+                                          color="primary"
+                                          disabled={!hasSource || state === "recording"}
+                                          onClick={() => {
+                                            if (state === "playing") {
+                                              recordReplayer.current.pause()
+                                            }
+                                            recordReplayer.current.src = undefined
+                                            setValue(0)
+                                          }}>
+                                <UndoOutlinedIcon sx={{ fontSize: "20px" }} />
                               </IconButton>
                             </span>
                         </Tooltip>
                     }
 
-                  </div>
+                    {recordingSlider}
+                    {state === "recording" && recordStartTime.current != 0 && (
+                      <div className={"controls_time_string"}>
+                        {msToTime(Math.floor((Date.now() - recordStartTime.current)))}
+                      </div>
+                    )}
 
-                  {recordingSlider}
-                  {state === "recording" && recordStartTime.current != 0 && (
-                    <div className={"controls_time_string"}>
-                      {msToTime(Math.floor((Date.now() - recordStartTime.current)))}
-                    </div>
-                  )}
+                    {state != "recording" && ((state === "playing" && duration != -1) || value !== 0) && (
+                      <div className={"controls_time_string"}>
+                        -{msToTime(duration * 1000 - Math.floor(recordReplayer.current.currentTime * 1000))}
+                      </div>
+                    )}
 
-                  {state != "recording" && ((state === "playing" && duration != -1) || value !== 0) && (
-                    <div className={"controls_time_string"}>
-                      -{msToTime(duration * 1000 - Math.floor(recordReplayer.current.currentTime * 1000))}
-                    </div>
-                  )}
-
-                  <div className={"controls_buttons_group"}>
                     {replayOnly && data?.user?.email === source?.summary.email ?
                       <Tooltip title={"copy embed code"}>
                         {shareButton}
@@ -928,35 +949,26 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
                     <Tooltip title={"show or hide output"}>
                       {outputSwitch}
                     </Tooltip>
+
+                    <IconButton sx={{p: "4px"}}
+                                disabled={uploading || !hasRecording}
+                                style={{ display: replayOnly ? "none" : "block" }}
+                                type={"submit"}
+                                form={"meta_data_form"}
+                    >
+                      <UploadIcon sx={{fontSize: "20px"}}/>
+                    </IconButton>
+
                     {
                       settingButton
                     }
                   </div>
                 </div>
-              </div>
 
-            }
-          </div>
-
-
-          <div className={"record_run_container"} style={{display: isEmbed ? "none" : "flex"}}>
-            <Button
-              disabled={uploading || !hasRecording}
-              style={{ visibility: replayOnly ? "hidden" : "visible" }}
-              variant="contained"
-              type={"submit"}
-              form={"meta_data_form"}
-              endIcon={<UploadIcon />}
-              color={"error"}>Upload
-            </Button>
-            <div>
-              <Button variant="contained" color="success" onClick={() => {
-                if (showFiles) run(true)
-                else run(false)
               }
-              }>Run{showFiles ? " All" : ""}</Button>
             </div>
-          </div>
+          </ThemeProvider>
+
 
         </div>
 

@@ -1,6 +1,5 @@
 import type { NextPage } from "next"
 import { useSession } from "next-auth/react"
-import LoginButton from "../../components/LoginButton"
 import { useEffect, useState } from "react"
 import { TraceSummary } from "@codereplay/types"
 import { MultiRecordReplayer } from "@codereplay/ace-recorder"

@@ -10,7 +10,7 @@ const RecordHome: NextPage = () => {
   return (
     <>
       <LoginButton />
-      <Recorder source={undefined}/>
+      <Recorder source={undefined} isEmbed={false}/>
     </>
   )
 }
