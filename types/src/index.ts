@@ -210,6 +210,8 @@ export interface IRecordReplayer {
 export namespace IRecordReplayer {
   export type State = "paused" | "playing" | "recording"
   export type Event =
+    | "starting"
+    | "ending"
     | "ended"
     | "srcChanged"
     | "seeked"
