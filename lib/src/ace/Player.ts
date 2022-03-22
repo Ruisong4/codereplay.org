@@ -36,7 +36,7 @@ class AcePlayer extends (EventEmitter as new () => TypedEmitter<AcePlayerEvents>
   // private _currentSession?: Ace.EditSession
   public scrollToCursor = false
   private sessionMap: Record<string, Ace.EditSession> = {}
-  public sessionName?: String
+  public sessionName?: string
 
   public constructor(editor: Ace.Editor, options?: AcePlayer.Options) {
     super()

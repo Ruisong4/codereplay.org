@@ -50,9 +50,9 @@ class AceRecorder extends (EventEmitter as new () => TypedEmitter<AceRecorderEve
 
     this.streamer.start((record: AceRecord) => {
       if (Complete.guard(record)) {
-        let currentSessions = [...Object.keys(this.sessionMap)]
-        let currentSessionInfo = currentSessions.map(v => {
-          return {name: v, contents: this.sessionMap[v].session.getValue(), mode: this.sessionMap[v].mode}
+        const currentSessions = [...Object.keys(this.sessionMap)]
+        const currentSessionInfo = currentSessions.map((v) => {
+          return { name: v, contents: this.sessionMap[v].session.getValue(), mode: this.sessionMap[v].mode }
         })
         record["sessionInfo"] = currentSessionInfo
       }
@@ -69,7 +69,7 @@ class AceRecorder extends (EventEmitter as new () => TypedEmitter<AceRecorderEve
     if (!this.recording) {
       throw new Error("Not recording")
     }
-    this.recording = false;
+    this.recording = false
     this.timer && clearInterval(this.timer)
     this.streamer!.stop()
     this.src = new AceTrace([...this.records], this.sessionInfo, this.startSession)
@@ -79,9 +79,9 @@ class AceRecorder extends (EventEmitter as new () => TypedEmitter<AceRecorderEve
       throw new Error("Not recording")
     }
     const record = getComplete(this.editor, reason, this.sessionName, this._external)
-    let currentSessions = [...Object.keys(this.sessionMap)]
-    let currentSessionInfo = currentSessions.map(v => {
-      return {name: v, contents: this.sessionMap[v].session.getValue(), mode: this.sessionMap[v].mode}
+    const currentSessions = [...Object.keys(this.sessionMap)]
+    const currentSessionInfo = currentSessions.map((v) => {
+      return { name: v, contents: this.sessionMap[v].session.getValue(), mode: this.sessionMap[v].mode }
     })
     record["sessionInfo"] = currentSessionInfo
     this.records.push(record)

@@ -28,6 +28,7 @@ class RecordReplayer implements IRecordReplayer {
       this.state = state
     })
     this.audio.player.addEventListener("ended", () => {
+      this.emitter.emit("event", "ending")
       this.currentTime = 0
       this.emitter.emit("event", "ended")
     })
@@ -83,6 +84,7 @@ class RecordReplayer implements IRecordReplayer {
     if (!this.src) {
       throw new Error("No source")
     }
+    this.emitter.emit("event", "starting")
     await this._audio.play()
     this.state = "playing"
   }
