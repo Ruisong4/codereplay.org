@@ -79,9 +79,10 @@ const DEFAULT_FILES = {
   scala3: "Main.sc"
 } as Record<language, string>
 
-const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordReplayer.Content } | undefined, isEmbed: boolean }> = ({
+const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordReplayer.Content } | undefined, isEmbed: boolean, isGroup: boolean }> = ({
                                                                                                                                        source,
-                                                                                                                                       isEmbed = false
+                                                                                                                                       isEmbed = false,
+  isGroup = false
                                                                                                                                      }) => {
   const editors = useRef<Record<string, Ace.Editor>>({})
   const aceEditorRef = useRef<IAceEditor>()
@@ -320,7 +321,7 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
     initialLoad.current === false && recordReplayer.current.play()
     initialLoad.current = false
     let traceSessions = ""
-    source!.trace.ace.code.sessionInfo.forEach((info: { name: string, content: string, mode: string }) => {
+    source!.trace.ace.code.sessionInfo.forEach((info) => {
       traceSessions += traceSessions === "" ? info.name : `,${info.name}`
     })
     setSessions(traceSessions)
@@ -898,8 +899,9 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
                           <span>
                             <IconButton sx={{p: "4px"}} color="primary"
                                         disabled={!data || state !== "paused"}
-                                        onClick={() => {
-                                          recordReplayer.current.record()
+                                        onClick={ async () => {
+                                          if (recordReplayer.current)
+                                           await recordReplayer.current.record()
                                         }}>
                             <RadioButtonCheckedOutlinedIcon sx={{ fontSize: "20px" }} />
                           </IconButton>

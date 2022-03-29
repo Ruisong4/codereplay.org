@@ -90,10 +90,26 @@
     throttle-debounce "3.0.1"
     whatwg-mimetype "3.0.0"
 
+"@codereplay/ace-recorder@2022.3.1":
+  version "2022.3.1"
+  resolved "https://registry.yarnpkg.com/@codereplay/ace-recorder/-/ace-recorder-2022.3.1.tgz#d21ec3c06416776d5deba2ee526bda9b14ad313d"
+  integrity sha512-l/x8EWsaGYAqqhoAdUzc0wCmBtN3C5GPX1brnpJJh+ngxQo6BPalc35KFz+rZO6R/LsoZHlDFS1v9RWZ8fMxxA==
+  dependencies:
+    "@codereplay/types" "2022.3.0"
+    fix-webm-duration "1.0.4"
+    mime-types "2.1.35"
+    throttle-debounce "3.0.1"
+    whatwg-mimetype "3.0.0"
+
 "@codereplay/types@2022.2.1":
   version "2022.2.1"
   resolved "https://registry.yarnpkg.com/@codereplay/types/-/types-2022.2.1.tgz#b8dedac53275b143197cda3ea8a7a8524e238ff3"
   integrity sha512-Sr3XAGp7bBXUE7yUBrT+0oQfiK16HlHwVER4bt1zAePRGjWfsNOzlpFxuO+YFxvH0gKVES+V/pv6RFpngxSZsw==
+
+"@codereplay/types@2022.3.0":
+  version "2022.3.0"
+  resolved "https://registry.yarnpkg.com/@codereplay/types/-/types-2022.3.0.tgz#c1dfe2c4c10c39d34d5ebda40b26a3be68d945e5"
+  integrity sha512-+7lqssjxoqokLwfWVNT+bDvUPG6v9K9zyEo5GV7f0KwACPMzIh5Ye9FKUHSRSxHlZIMuXhZ1ZEeAJ1nUwAFwkg==
 
 "@cs124/playground-types@2021.11.3":
   version "2021.11.3"

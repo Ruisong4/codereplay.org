@@ -20,6 +20,7 @@
     "fix-webm-duration": "1.0.4",
     "mime-types": "2.1.35",
     "throttle-debounce": "3.0.1",
+    "uuid": "^8.3.2",
     "whatwg-mimetype": "3.0.0"
   },
   "peerDependencies": {

@@ -17,6 +17,7 @@ import ratelimit from "koa-ratelimit"
 import { MongoClient as mongo } from "mongodb"
 import mongodbUri from "mongodb-uri"
 import { String } from "runtypes"
+import {v4 as uuidv4, NIL as NIL_UUID} from 'uuid'
 
 const fetch = retryBuilder(originalFetch)
 
@@ -24,6 +25,17 @@ const client = mongo.connect(process.env.MONGODB as string)
 const database = client.then((c) => c.db(mongodbUri.parse(String.check(process.env.MONGODB)).database))
 const playgroundCollection = database.then((d) => d.collection(process.env.MONGODB_COLLECTION || "playground"))
 const traceCollection = database.then((d) => d.collection(process.env.MONGODB_COLLECTION || "trace"))
+
+
+/**
+ * GroupCollection: group information, {role: "creator" || "member", groupID: string (uuid), email: string, active: boolean}
+ */
+const groupCollection = database.then((d) => d.collection(process.env.MONGODB_COLLECTION || "group"))
+
+/**
+ * The recording context of an embedding page {iframeHeight: number (> 350), language: string, fileCount: number, groupId: string, instanceId: string}
+ */
+const groupRecordContext = database.then((d) => d.collection(process.env.MONGODB_COLLECTION || "context"))
 
 const ENCRYPTION_KEY = hkdf("sha256", process.env.SECRET, "", "NextAuth.js Generated Encryption Key", 32)
 const VALID_DOMAINS = process.env.VALID_DOMAINS?.split(",").map((s) => s.trim())
@@ -87,7 +99,9 @@ const processUpload = async (ctx: Context) => {
         tag: metadata.tag,
         description: metadata.description,
         showFiles: metadata.showFiles,
-        containerHeight: metadata.containerHeight
+        containerHeight: metadata.containerHeight,
+        groupId: metadata.groupId ? metadata.groupId : NIL_UUID,
+        embedId: metadata.embedId ? metadata.embedId : 0,
       })
     )
   } catch (err) {
@@ -140,6 +154,129 @@ router.get("/traces", async (ctx: Context) => {
   })
 
   ctx.body = { traces }
+})
+
+router.post("/recording_context", async (ctx: Context) => {
+  const collection = await groupRecordContext
+  if (ctx.email) {
+    const newContext = {
+      creator: ctx.email,
+      name: ctx.request.body.name,
+      embedId: ctx.request.body.embedId,
+      groupId: ctx.request.body.groupId,
+      iframeHeight: ctx.request.body.iframeHeight,
+      language: ctx.request.body.language,
+      fileCount: ctx.request.body.fileCount
+    }
+    await collection.insertOne(newContext)
+    ctx.body = { status: "success", newContext }
+  } else {
+    return ctx.throw(403, "only logged in user can create group")
+  }
+})
+
+router.get("/recording_context/:id", async (ctx: Context) => {
+  const collection = await groupRecordContext
+
+  const url =  ctx.request.url.split("/")
+
+  let parts = url[url.length-1].split("-")
+
+  let embedId = parts.pop()
+  let groupId = parts.join("-")
+
+  const context = await collection.findOne({
+    groupId: groupId,
+    embedId: embedId
+  })
+
+  delete (context as any)._id
+
+  ctx.body = { context }
+})
+
+router.get("/recording_context", async (ctx: Context) => {
+  if (ctx.email) {
+    const collection = await groupRecordContext
+    const contexts = (await collection.find({
+      "creator": ctx.email
+    }).toArray()).map((g) => {
+      delete (g as any)._id
+      return g
+    })
+    ctx.body = { contexts }
+  } else {
+    return ctx.throw(403, "Not logged in")
+  }
+})
+
+router.post("/recording_group", async (ctx: Context) => {
+  const collection = await groupCollection
+  if (ctx.email) {
+    const newGroup = {
+      role: "creator",
+      groupId: uuidv4(),
+      email: ctx.email,
+      active: true,
+      name: ctx.request.body.name
+    }
+    await collection.insertOne(newGroup)
+    ctx.body = { newGroup }
+  } else {
+    return ctx.throw(403, "only logged in user can create group")
+  }
+})
+
+router.get("/recording_group", async (ctx: Context) => {
+  if (ctx.email) {
+    const collection = await groupCollection
+    const groups = (await collection.find({
+      "email": ctx.email
+    }).toArray()).map((g) => {
+      delete (g as any)._id
+      return g
+    })
+    ctx.body = { groups }
+  } else {
+    return ctx.throw(403, "Not logged in")
+  }
+})
+
+router.post("/join_group", async (ctx: Context) => {
+  if (ctx.email) {
+    const collection = await groupCollection
+    const groupToJoin = ctx.request.body.groupId.trim()
+    const currStatus = await collection.findOne({
+      email: ctx.email,
+      groupId: groupToJoin
+    })
+    if (currStatus) {
+      ctx.body = {
+        status: "fail",
+        msg: "already a member"
+      }
+    } else {
+      const groupRef = (await collection.findOne({ groupId: groupToJoin }))
+      if (!groupRef) {
+        ctx.body = {
+          status: "fail",
+          msg: "invalid group"
+        }
+      } else {
+        const newGroup = {
+          role: "member",
+          groupId: groupToJoin,
+          email: ctx.email,
+          active: true,
+          name: groupRef.name
+        }
+        await collection.insertOne(newGroup)
+        ctx.body = { status: "success", newGroup }
+      }
+    }
+  } else {
+    return ctx.throw(403, "Not logged in")
+  }
 })
 
 router.get("/info/:fileRoot", async (ctx: Context) => {

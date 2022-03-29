@@ -39,7 +39,8 @@
     "mongodb-uri": "^0.9.7",
     "multer": "1.4.4",
     "next-auth": "4.2.1",
-    "runtypes": "6.5.1"
+    "runtypes": "6.5.1",
+    "uuid": "^8.3.2"
   },
   "devDependencies": {
     "@types/child-process-promise": "2.2.2",
