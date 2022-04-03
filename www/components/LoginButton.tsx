@@ -146,6 +146,9 @@ const LoginButton: React.FC<{ icon?: boolean; text?: boolean }> = ({ icon = fals
           location.href = "/user"
         }}>Home</MenuItem>
         <MenuItem onClick={() => {
+          location.href = "/record"
+        }}>Record</MenuItem>
+        <MenuItem onClick={() => {
           handleClose()
           setDialogOpen(true)
         }}>Join Group</MenuItem>

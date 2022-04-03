@@ -11,8 +11,8 @@ import {
   Box,
   Button,
   ClickAwayListener,
-  Collapse, createTheme, Divider,
-  IconButton, List, ListItem, ListItemButton, ListItemIcon, ListItemText,
+  Collapse, createTheme, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Divider, FormControl,
+  IconButton, List, ListItem, ListItemButton, ListItemIcon, ListItemText, MenuItem, Select,
   Popper, Slider, Switch,
   TextField, ThemeProvider,
   Tooltip
@@ -38,6 +38,7 @@ import LanguageIcon from '@mui/icons-material/Language';
 import ExpandLess from '@mui/icons-material/ExpandLess';
 import ExpandMore from '@mui/icons-material/ExpandMore';
 import PlayCircleFilledIcon from '@mui/icons-material/PlayCircleFilled';
+import ForkLeftIcon from '@mui/icons-material/ForkLeft';
 
 
 const buttonTheme = createTheme({
@@ -46,21 +47,31 @@ const buttonTheme = createTheme({
       styleOverrides: {
         root: {
           color: grey[100],
-        },
-        disabled: {
-          color: grey[700]
+          "&.Mui-disabled": {
+            color: "#949393"
+          }
         }
       }
     },
     MuiButtonBase: {
       styleOverrides: {
-        disabled: {
-          color: grey[700]
+        root: {
+          "&.Mui-disabled": {
+            color: "#949393"
+          }
         }
       }
     }
   }
 })
+
+type GroupInfo = {
+  email: string;
+  role: string;
+  active: boolean;
+  groupId: string;
+  name: string;
+}
 
 const PLAYGROUND_ENDPOINT = `${process.env.NEXT_PUBLIC_API_URL}/playground`
 const ILLINOIS_API_URL = `${process.env.NEXT_PUBLIC_ILLINOIS_API_URL}/playground`
@@ -79,10 +90,11 @@ const DEFAULT_FILES = {
   scala3: "Main.sc"
 } as Record<language, string>
 
-const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordReplayer.Content } | undefined, isEmbed: boolean, isGroup: boolean }> = ({
+const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordReplayer.Content } | undefined, isEmbed: boolean, forkFromSource: boolean, includeForks: boolean }> = ({
                                                                                                                                        source,
                                                                                                                                        isEmbed = false,
-  isGroup = false
+                                                                                                                                       forkFromSource = false,
+  includeForks = false
                                                                                                                                      }) => {
   const editors = useRef<Record<string, Ace.Editor>>({})
   const aceEditorRef = useRef<IAceEditor>()
@@ -120,6 +132,17 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
 
   const [settingMenuOpen, setSettingMenuOpen] = useState<boolean>(false)
   const [settingMenuAnchor, setSettingMenuAnchor] = useState<null | HTMLElement>(null)
+
+  const [dialogOpen, setDialogOpen] = useState(false)
+
+  const [iframeGroup, setIframeGroup] = useState("")
+
+  const [groups, setGroups] = useState<GroupInfo[]>([])
+
+  useEffect(() => {
+    if (isEmbed) return
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/recording_group`, { credentials: "include" }).then(r => r.json()).then(response => setGroups(response.groups))
+  }, [data])
 
   const [tag, setTag] = useState<string>(mode)
 
@@ -159,7 +182,7 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
     }
   }, [showFiles, data, state])
 
-  const replayOnly = source !== undefined
+  const replayOnly = source !== undefined && !(forkFromSource)
 
   //const embedRef: React.RefObject<HTMLDivElement> = createRef()
   const embedRef = useRef<HTMLDivElement>(null)
@@ -309,27 +332,44 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
 
   const initialLoad = useRef(true)
 
+  useEffect(() => {
+    setupSource()
+  }, [source])
+
   function setupSource() {
-    if (!recordReplayer.current) {
+    if (!recordReplayer.current || !source) {
       return
     }
     if (recordReplayer.current.state === "playing") {
       recordReplayer.current.pause()
     }
 
-    recordReplayer.current.src = source?.trace
+    if (!forkFromSource)
+      recordReplayer.current.src = source?.trace
     initialLoad.current === false && recordReplayer.current.play()
     initialLoad.current = false
     let traceSessions = ""
-    source!.trace.ace.code.sessionInfo.forEach((info) => {
+    if (forkFromSource) {
+      recordReplayer.current!.ace.recorders["code"].clearSessions()
+    }
+    source!.trace!.ace!.code.sessionInfo.forEach((info) => {
       traceSessions += traceSessions === "" ? info.name : `,${info.name}`
+      if (forkFromSource) {
+        recordReplayer.current!.ace.recorders["code"].addSession({
+          name: info.name,
+          contents: info.contents,
+          mode: info.mode
+        })
+      }
     })
     setSessions(traceSessions)
-    setActive(source!.trace.ace.code.sessionName)
+    setActive(source!.trace!.ace!.code.sessionName)
     setTitle(source!.summary.title)
     setTag(source!.summary.tag)
     setShowFiles(source!.summary.showFiles)
+    setMode(source!.summary.mode)
     setContainerHeight(source!.summary.containerHeight)
+    setDescription(source!.summary.description)
     console.log(source)
   }
 
@@ -340,20 +380,20 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
     recordReplayer.current = new MultiRecordReplayer(editors.current, {
       filterRecord: (record, name) => {
 
-        if (name === "code" && (recordReplayer.current.hasRecording || replayOnly)) {
+        if (name === "code" && (recordReplayer.current!.hasRecording || replayOnly)) {
           const r = record as any
           if (r.sessionName) {
             setActive(r.sessionName)
           }
         }
 
-        if (name !== "output" || (record.type !== "external" && record.type !== "complete") || record.external === undefined) {
+        if (record.type !== "complete" && (record.type !== "external"  || record.external === undefined || name !== "output")) {
           return true
         }
 
         const r = record as any
         let filtered = true
-        if (r.external.showOutput !== undefined) {
+        if (r.external && r.external.showOutput !== undefined) {
           setShowOutput(r.external.showOutput)
           filtered = false
         }
@@ -410,7 +450,7 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
 
 
   useEffect(() => {
-    if (replayOnly) {
+    if (replayOnly || forkFromSource) {
       setupSource()
     }
   }, [recordReplayer.current])
@@ -451,11 +491,12 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
 
     setUploading(true)
     uploadTrace({ trace: ace, mode }, audio, {
-      description: e.target.elements.description.value,
-      title: e.target.elements.title.value,
-      tag: e.target.elements.tag.value,
-      containerHeight: savedContainerHeight.current,
-      showFiles: savedShowFiles.current
+      description: forkFromSource ? source!.summary.description : e.target.elements.description.value,
+      title: forkFromSource ? source!.summary.title :e.target.elements.title.value,
+      tag: forkFromSource ? source!.summary.tag :e.target.elements.tag.value,
+      containerHeight: forkFromSource ? source!.summary.containerHeight : savedContainerHeight.current,
+      showFiles: forkFromSource ? source!.summary.showFiles : savedShowFiles.current,
+      forkedFrom: forkFromSource ? source!.summary.fileRoot : null,
     }).then(() => {
       setUploading(false)
       window.location.href = "/"
@@ -463,7 +504,7 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
   }, [mode])
 
   useEffect(() => {
-    if (!replayOnly) {
+    if (!replayOnly && !forkFromSource) {
       let split = savedTag.current.split(",")
       split[0] = mode
       setTag(split.join(","))
@@ -602,8 +643,9 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
 
 
   const shareButton = <IconButton sx={{p: "4px"}} color={"primary"} onClick={() => {
-    let height = embedRef.current!.clientHeight
-    navigator.clipboard.writeText(`<iframe src="http://localhost:3000/embed/${source!.summary.fileRoot}" width="100%" height="${height}px" style="border:none; overflow: hidden" scrolling="no"> </iframe>`)
+    setDialogOpen(true)
+    //let height = embedRef.current!.clientHeight
+    //navigator.clipboard.writeText(`<iframe src="http://localhost:3000/embed/${source!.summary.fileRoot}" width="100%" height="${height}px" style="border:none; overflow: hidden" scrolling="no"> </iframe>`)
   }}>
     <CodeIcon sx={{ fontSize: "20px" }} />
   </IconButton>
@@ -681,20 +723,20 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
         open={settingMenuOpen}>
         <Box sx={{...menuColor}}>
           <List dense sx={{...menuColor, p:0}}>
-            <ListItem disabled={replayOnly || !(recorderState === "readyToRecord" && state === "paused")}>
+            <ListItem disabled={replayOnly || forkFromSource || !(recorderState === "readyToRecord" && state === "paused")}>
               <ListItemIcon><FolderIcon sx={{...menuColor}}/></ListItemIcon>
               <ListItemText primary="Show File Structure"/>
-              <Switch checked={showFiles} onChange={() => setShowFiles(!showFiles)} disabled={replayOnly || !(recorderState === "readyToRecord" && state === "paused")} sx={{...menuColor}} color="warning" edge={"end"}/>
+              <Switch checked={showFiles} onChange={() => setShowFiles(!showFiles)} disabled={forkFromSource || replayOnly || !(recorderState === "readyToRecord" && state === "paused")} sx={{...menuColor}} color="warning" edge={"end"}/>
             </ListItem>
             <Divider sx={{bgcolor:grey[50]}}/>
             <ListItem onClick={e => {
-                if (!(recorderState === "readyToRecord" && state === "paused")) return
+                if (!(recorderState === "readyToRecord" && state === "paused") || forkFromSource) return
                 if(playbackMenuOpen) {
                   setPlaybackMenuOpen(false)
                 }
                 setLanguageMenuOpen(!languageMenuOpen)
               }
-            } style={{cursor:"pointer"}} disabled={!(recorderState === "readyToRecord" && state === "paused")}>
+            } style={{cursor:"pointer"}} disabled={!(recorderState === "readyToRecord" && state === "paused") || forkFromSource}>
               <ListItemIcon><LanguageIcon sx={{...menuColor}}/></ListItemIcon>
               <ListItemText primary={mode}/>
               {languageMenuOpen ? <ExpandLess /> : <ExpandMore />}
@@ -740,6 +782,48 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
     value={value}
   />
 
+  const shareDialog = replayOnly && <Dialog open={dialogOpen} onClose={()=>setDialogOpen(false)}>
+    <DialogTitle>Create an Iframe</DialogTitle>
+    <DialogContent>
+      <DialogContentText>
+        Create an Iframe and put it on your site! Use the below dropdown menu to select the recordings you want to include
+      </DialogContentText>
+
+      <FormControl sx={{ m: 1, minWidth: 120 }}>
+        <Select
+          value={iframeGroup}
+          onChange={(e) => {
+            setIframeGroup(e.target.value)
+          }
+          }
+          displayEmpty
+          inputProps={{ 'aria-label': 'Without label' }}
+        >
+          <MenuItem value="">Only This</MenuItem>
+          <MenuItem value="allForks">allForks</MenuItem>
+          {groups.map((g, key) => {
+            return <MenuItem value={g.groupId} key={key}>{g.name}</MenuItem>
+          })}
+        </Select>
+      </FormControl>
+
+      <TextField
+        autoFocus
+        margin="dense"
+        value={`<iframe src="http://localhost:3000/embed/${source!.summary.fileRoot}/${iframeGroup}" width="100%" height="${embedRef.current ? embedRef.current!.clientHeight + 60 : 0}px" style="border:none; overflow: hidden" scrolling="no"> </iframe>`}
+        id="id"
+        label="iframe code"
+        type="text"
+        fullWidth
+        variant="standard"
+      />
+    </DialogContent>
+    <DialogActions>
+      <Button onClick={() => {
+        setDialogOpen(false)
+      }}>Close</Button>
+    </DialogActions>
+  </Dialog>
 
   return (
     <div style={{ marginTop: isEmbed ? "0" : "48px" }}>
@@ -759,7 +843,7 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
 
 
               {
-                sessions.split(",").length < 5 && !replayOnly && !hasRecording &&
+                sessions.split(",").length < 5 && !forkFromSource && !replayOnly && !hasRecording &&
                 <Tooltip title={"Create a new file here, you can create at most 5 files"}>
                   <IconButton sx={{ minHeight: 0, minWidth: 0, padding: 0 }} onClick={() => {
                     let startWithLower = DEFAULT_FILES[mode].split(".")[0][0] === DEFAULT_FILES[mode].split(".")[0][0].toLowerCase()
@@ -822,7 +906,7 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
                     aceOutputRef.current = ace
                     editors.current["output"] = ace
                     finishInitialization()
-
+                    setShowOutput(true)
                     const renderer = ace.renderer as any
                     renderer.$cursorLayer.element.style.display = "none"
                   }}
@@ -831,7 +915,7 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
             </ReflexContainer>
 
             {
-              !replayOnly &&
+              !replayOnly && !forkFromSource &&
               <div ref={containerResizerRef} className={"record_container_resizer"}
                    onMouseDown={recorderState === "readyToRecord" && state === "paused" ? e => {
                      let start = e.pageY
@@ -942,7 +1026,20 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
                       </div>
                     )}
 
-                    {replayOnly && data?.user?.email === source?.summary.email ?
+                    {replayOnly && !isEmbed && data?.user?.email !== source?.summary.email ?
+                      <Tooltip title={"fork this recording"}>
+                        <IconButton sx={{p: "4px"}}
+                                    onClick={() => {
+                                      window.location.href = "/record/fork/" + source?.summary.fileRoot
+                                    }
+                                    }
+                        >
+                          <ForkLeftIcon sx={{fontSize: "20px"}}/>
+                        </IconButton>
+                      </Tooltip> : null
+                    }
+
+                    {replayOnly && !isEmbed && data?.user?.email === source?.summary.email ?
                       <Tooltip title={"copy embed code"}>
                         {shareButton}
                       </Tooltip> : null
@@ -952,14 +1049,22 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
                       {outputSwitch}
                     </Tooltip>
 
-                    <IconButton sx={{p: "4px"}}
-                                disabled={uploading || !hasRecording}
-                                style={{ display: replayOnly ? "none" : "block" }}
-                                type={"submit"}
-                                form={"meta_data_form"}
-                    >
-                      <UploadIcon sx={{fontSize: "20px"}}/>
-                    </IconButton>
+                    {
+                      forkFromSource ? <IconButton sx={{p: "4px"}}
+                                                   onClick={upload}
+                                                   disabled={uploading || !hasRecording}
+                                                   style={{ display: replayOnly ? "none" : "block" }}
+                      >
+                        <UploadIcon sx={{fontSize: "20px"}}/>
+                      </IconButton> : <IconButton sx={{p: "4px"}}
+                                                     disabled={uploading || !hasRecording}
+                                                     style={{ display: replayOnly ? "none" : "block" }}
+                                                     type={"submit"}
+                                                     form={"meta_data_form"}
+                      >
+                        <UploadIcon sx={{fontSize: "20px"}}/>
+                      </IconButton>
+                    }
 
                     {
                       settingButton
@@ -976,7 +1081,7 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
 
 
         {
-          !replayOnly && !isEmbed &&
+          !replayOnly && !forkFromSource && !isEmbed &&
           <div className={"record_metadata_container"}>
             <form id={"meta_data_form"} onSubmit={(e) => upload(e)}>
               <div className={"record_form_title_container"}>
@@ -1011,7 +1116,7 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
 
 
         {
-          replayOnly && !isEmbed &&
+          (replayOnly || forkFromSource) && !isEmbed &&
           <div>
             <div className={"record_title_container"}>
               <div className={"record_title"}>{title}</div>
@@ -1033,6 +1138,7 @@ const Recorder: React.FC<{ source: { summary: TraceSummary; trace: MultiRecordRe
         }
       </div>
       {settingMenu}
+      {shareDialog}
     </div>
   )
 }

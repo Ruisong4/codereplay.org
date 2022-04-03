@@ -41,7 +41,7 @@ const Home: NextPage = () => {
   }, [keyword, traces])
   
   useEffect(() => {
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/traces`, { credentials: "include" })
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/traces/${encodeURIComponent("{}")}`, { credentials: "include" })
       .then((r) => r.json())
       .then((response) => {
         response.traces.sort((a: { fileRoot: number }, b: { fileRoot: number }) => b.fileRoot - a.fileRoot)

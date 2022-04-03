@@ -10,8 +10,8 @@
     "prettier": "prettier -w --plugin=prettier-plugin-organize-imports . && prettier-package-json --write"
   },
   "dependencies": {
-    "@codereplay/ace-recorder": "2022.2.2",
-    "@codereplay/types": "2022.2.1",
+    "@codereplay/ace-recorder": "2022.3.2",
+    "@codereplay/types": "2022.3.1",
     "@cs124/playground-types": "2021.11.3",
     "@emotion/react": "^11.8.2",
     "@emotion/styled": "^11.8.1",

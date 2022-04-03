@@ -1,4 +1,4 @@
-import { SavedTrace, TraceSummary, UploadedTrace } from "@codereplay/types"
+import { SavedTrace, TraceSummary, UploadedTrace, AceRecord } from "@codereplay/types"
 import { Result, Submission } from "@cs124/playground-types"
 import cors from "@koa/cors"
 import multer, { File } from "@koa/multer"
@@ -17,7 +17,7 @@ import ratelimit from "koa-ratelimit"
 import { MongoClient as mongo } from "mongodb"
 import mongodbUri from "mongodb-uri"
 import { String } from "runtypes"
-import {v4 as uuidv4, NIL as NIL_UUID} from 'uuid'
+import {v4 as uuidv4} from 'uuid'
 
 const fetch = retryBuilder(originalFetch)
 
@@ -32,10 +32,6 @@ const traceCollection = database.then((d) => d.collection(process.env.MONGODB_CO
  */
 const groupCollection = database.then((d) => d.collection(process.env.MONGODB_COLLECTION || "group"))
 
-/**
- * The recording context of an embedding page {iframeHeight: number (> 350), language: string, fileCount: number, groupId: string, instanceId: string}
- */
-const groupRecordContext = database.then((d) => d.collection(process.env.MONGODB_COLLECTION || "context"))
 
 const ENCRYPTION_KEY = hkdf("sha256", process.env.SECRET, "", "NextAuth.js Generated Encryption Key", 32)
 const VALID_DOMAINS = process.env.VALID_DOMAINS?.split(",").map((s) => s.trim())
@@ -62,6 +58,7 @@ router.get("/", async (ctx: Context) => {
 
 const processUpload = async (ctx: Context) => {
   const collection = await traceCollection
+  const gCollection = await groupCollection
   const now = new Date()
   const files = ctx.request.files as { [key: string]: File[] }
 
@@ -82,6 +79,13 @@ const processUpload = async (ctx: Context) => {
     await exec(`ffmpeg -i ${audioInputFile} ${audioRoot}.mp4`)
     await exec(`ffmpeg -i ${audioInputFile} ${audioRoot}.mp3`)
 
+    const groups = (await gCollection.find({
+      "email": ctx.email
+    }).toArray()).map((g) => {
+      delete (g as any)._id
+      return g.groupId as string
+    })
+
     await fs.writeFile(
       `/downloads/${now.valueOf()}.json`,
       JSON.stringify(SavedTrace.check({ timestamp: now, ...trace }))
@@ -100,8 +104,8 @@ const processUpload = async (ctx: Context) => {
         description: metadata.description,
         showFiles: metadata.showFiles,
         containerHeight: metadata.containerHeight,
-        groupId: metadata.groupId ? metadata.groupId : NIL_UUID,
-        embedId: metadata.embedId ? metadata.embedId : 0,
+        userGroups: groups,
+        forkedFrom: metadata.forkedFrom ?  metadata.forkedFrom : now.valueOf()
       })
     )
   } catch (err) {
@@ -144,70 +148,18 @@ router.post(
 
 const PLAYGROUND_SERVER = String.check(process.env.PLAYGROUND_SERVER)
 
-router.get("/traces", async (ctx: Context) => {
+router.get("/traces/:query", async (ctx: Context) => {
   const collection = await traceCollection
-
-  const traces = (await collection.find({}).toArray()).map((t) => {
+  const url =  ctx.request.url.split("/")
+  console.log(url)
+  const query = JSON.parse(decodeURIComponent(url[url.length - 1]))
+  const traces = (await collection.find(query).toArray()).map((t) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     delete (t as any)._id
     return TraceSummary.check(t)
   })
 
   ctx.body = { traces }
-})
-
-router.post("/recording_context", async (ctx: Context) => {
-  const collection = await groupRecordContext
-  if (ctx.email) {
-    const newContext = {
-      creator: ctx.email,
-      name: ctx.request.body.name,
-      embedId: ctx.request.body.embedId,
-      groupId: ctx.request.body.groupId,
-      iframeHeight: ctx.request.body.iframeHeight,
-      language: ctx.request.body.language,
-      fileCount: ctx.request.body.fileCount
-    }
-    await collection.insertOne(newContext)
-    ctx.body = { status: "success", newContext }
-  } else {
-    return ctx.throw(403, "only logged in user can create group")
-  }
-})
-
-router.get("/recording_context/:id", async (ctx: Context) => {
-  const collection = await groupRecordContext
-
-  const url =  ctx.request.url.split("/")
-
-  let parts = url[url.length-1].split("-")
-
-  let embedId = parts.pop()
-  let groupId = parts.join("-")
-
-  const context = await collection.findOne({
-    groupId: groupId,
-    embedId: embedId
-  })
-
-  delete (context as any)._id
-
-  ctx.body = { context }
-})
-
-router.get("/recording_context", async (ctx: Context) => {
-  if (ctx.email) {
-    const collection = await groupRecordContext
-    const contexts = (await collection.find({
-      "creator": ctx.email
-    }).toArray()).map((g) => {
-      delete (g as any)._id
-      return g
-    })
-    ctx.body = { contexts }
-  } else {
-    return ctx.throw(403, "Not logged in")
-  }
 })
 
 router.post("/recording_group", async (ctx: Context) => {
@@ -283,7 +235,7 @@ router.get("/info/:fileRoot", async (ctx: Context) => {
   const collection = await traceCollection
 
   const url =  ctx.request.url.split("/")
-  console.log(url[url.length-1])
+
   const trace = await collection.findOne({
     "fileRoot": Number(url[url.length-1])
   })
