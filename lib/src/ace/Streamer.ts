@@ -53,6 +53,9 @@ class AceStreamer {
         fontSize: parseInt(this.editor.getFontSize()),
         lineHeight: renderer.$textLayer.getLineHeight(),
       })
+      if (windowSize.rows === null || windowSize.rows === undefined) {
+        return
+      }
       if (
         windowSize.width === lastWindowSize.width &&
         windowSize.height === lastWindowSize.height &&
