@@ -3,14 +3,14 @@ import {
   Boolean,
   Dictionary,
   InstanceOf,
-  Literal,
+  Literal, Null,
   Number,
   Partial,
   Record as RuntypeRecord,
   Static,
   String,
   Union,
-  Unknown,
+  Unknown
 } from "runtypes"
 
 export const SessionInfo = RuntypeRecord({
@@ -161,6 +161,9 @@ export const AceTraceContent = RuntypeRecord({
     sessionName: String,
   })
 )
+
+export type AceTraceContent = Static<typeof  AceTraceContent>
+
 export class AceTrace {
   records: AceRecord[]
   duration: number
@@ -244,3 +247,66 @@ export const SavedTrace = UploadedTrace.And(
   })
 )
 export type SavedTrace = Static<typeof SavedTrace>
+
+export const ClientTraceMetadata = RuntypeRecord({
+  description: String,
+  title: String,
+  tag: String,
+  showFiles: Boolean,
+  containerHeight: Number,
+  forkedFrom: Number.Or(Null),
+})
+
+export type ClientTraceMetadata = Static<typeof ClientTraceMetadata>
+
+export const ServerTraceMetadata = RuntypeRecord({
+  userGroups: Array(String),
+})
+
+export type ServerTraceMetadata = Static<typeof ServerTraceMetadata>
+
+export const TraceMetadata = ClientTraceMetadata.And(ServerTraceMetadata)
+
+export type TraceMetadata = Static<typeof TraceMetadata>
+
+export const User = RuntypeRecord({
+  email: String,
+  name: String,
+  picture: String,
+})
+
+export type User = Static<typeof User>
+
+export const RecordingSummary = TraceMetadata.And(TraceSummary)
+
+export type RecordingSummary = Static<typeof RecordingSummary>
+
+export const RecordingSummaryWithUser = RecordingSummary.And(User)
+export type RecordingSummaryWithUser = Static<typeof RecordingSummaryWithUser>
+
+export const RecordingGroup = RuntypeRecord({
+  role: String,
+  groupId: String,
+  email: String,
+  active: Boolean,
+  name: String,
+})
+
+export type RecordingGroup = Static<typeof RecordingGroup>
+
+export const PendingRecord = RuntypeRecord({
+  description: String,
+  title: String,
+  tag: String,
+  fileRoot: Number,
+  processingStatus: String,
+  email: String,
+})
+
+export type PendingRecord = Static<typeof PendingRecord>
+
+export const PendingRecordWithUser = User.And(PendingRecord)
+
+export type PendingRecordWithUser = Static<typeof PendingRecordWithUser>
+
+export type Language = "python" | "cpp" | "haskell" | "java" | "julia" | "r" | "c" | "go" | "rust" | "scala3" | "kotlin"

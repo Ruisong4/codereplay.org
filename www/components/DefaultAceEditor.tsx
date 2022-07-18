@@ -1,4 +1,5 @@
 import Ace, { IAceEditorProps } from "react-ace"
+import React from "react"
 
 const DefaultAceEditor: React.FC<IAceEditorProps> = (props) => {
   return (
